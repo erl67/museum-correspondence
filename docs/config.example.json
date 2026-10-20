@@ -1,0 +1,17 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "temperature": 1.0,
+  "thinking_level": "high",
+  "max_output_tokens": 16384,
+  "max_edge": 0,
+  "max_request_bytes": 19000000,
+  "max_pages": 40,
+  "timeout": 180,
+  "attempts": 3,
+  "rpm": 2,
+  "daily_limit": 20,
+  "quota_file": "local/quota.json",
+  "quota_timezone": "America/Los_Angeles",
+  "max_retry_wait": 120,
+  "rates": null
+}

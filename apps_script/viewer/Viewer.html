@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; color: #222d31; background: #f5f3ed; }
+    body { max-width: 1500px; margin: auto; padding: 24px; }
+    h1 { font-family: Georgia, serif; font-weight: normal; margin-bottom: 8px; }
+    button, input { font: inherit; padding: 10px; }
+    input { min-width: 220px; width: min(65%, 600px); }
+    a { color: #205c64; }
+    .muted { color: #526267; }
+    .notice { padding: 12px; background: #fff2d2; border-left: 3px solid #987625; }
+    .reader { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+    .panel { background: white; padding: 22px; border: 1px solid #dddcd4; margin-top: 16px; min-width: 0; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 1rem/1.65 Georgia, serif; }
+    img { max-width: 100%; height: auto; }
+    figure { margin: 0 0 24px; }
+    figcaption { font-size: .85rem; overflow-wrap: anywhere; margin: 8px 0; }
+    details pre { font: .8rem/1.5 monospace; }
+    li { margin: 8px 0; overflow-wrap: anywhere; }
+    @media (max-width: 850px) { body { padding: 12px; } .reader { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-letter="<?= letterId ?>" data-url="<?= appUrl ?>">
+  <h1>Museum correspondence</h1>
+  <p class="muted">Historical letters, source scans, and reviewed connections</p>
+  <p id="initial-error" role="alert"><?= error ?></p>
+  <form id="search"><label for="query">Search correspondent, date, or saved text</label><br>
+    <input id="query" maxlength="200"><button type="submit">Search</button></form>
+  <p id="message" role="status"></p>
+  <nav id="results" aria-label="Search results"></nav>
+  <main id="record"></main>
+  <script>
+    'use strict';
+    function element(tag, text, parent) {
+      const node = document.createElement(tag);
+      if (text !== undefined && text !== null) node.textContent = String(text);
+      if (parent) parent.appendChild(node);
+      return node;
+    }
+    function linkTo(id, label, parent) {
+      const a = element('a', label, parent);
+      a.href = document.body.dataset.url + '?letter=' + encodeURIComponent(id);
+      return a;
+    }
+    function value(meta, name) {
+      return (meta[name] && (meta[name].value || meta[name].normalized)) || 'Unknown';
+    }
+    function relationshipLabel(link, id) {
+      const other = link.from_letter === id ? link.to_letter : link.from_letter;
+      const direction = link.relation === 'reply_to'
+        ? (link.from_letter === id ? 'Replies to earlier letter' : 'Later reply to this letter')
+        : link.relation.replace(/_/g, ' ') + (link.from_letter === id ? ' →' : ' ←');
+      return { other, label: link.status.toUpperCase() + ': ' + direction };
+    }
+    function renderLetter(result) {
+      const root = document.getElementById('record');
+      root.replaceChildren();
+      const letter = result.letter;
+      element('h2', value(letter.metadata, 'sender') + ' → ' + value(letter.metadata, 'recipient'), root);
+      element('p', letter.letter_id + ' · ' + value(letter.metadata, 'date'), root);
+      const status = element('p', 'Transcription: ' + letter.execution + ' · Grouping: ' + letter.grouping +
+        ' · Metadata review: ' + letter.metadata_review + ' · Human transcription review: ' +
+        letter.transcription_review + ' · Relationship review: ' + letter.relationship_review, root);
+      status.className = 'notice';
+      if (letter.review_reasons.length) element('p', letter.review_reasons.join('\n'), root);
+      if (letter.summary) element('p', 'Interpretive summary: ' + letter.summary, root);
+      if (letter.hints) element('p', 'Provisional filename/folder hints (not document evidence): ' +
+        [letter.hints.sender, letter.hints.recipient, letter.hints.date, letter.hints.folder].filter(Boolean).join(' · '), root);
+      const reader = element('div', null, root); reader.className = 'reader';
+      const text = element('section', null, reader); text.className = 'panel';
+      element('h3', 'Source-language transcription', text);
+      if (!letter.pages.length) {
+        element('p', 'No complete transcription is available.', text);
+        if (letter.partial_response) {
+          element('h4', 'Unaccepted or partial service response', text);
+          element('pre', letter.partial_response, text);
+        }
+      }
+      for (const page of letter.pages) {
+        const scan = letter.scans.find(s => s.image_id === page.image_id);
+        element('h4', 'Page ' + page.image_id + ' · ' + (scan ? scan.filename : '') + ' · ' + page.status, text);
+        element('pre', page.text, text);
+        for (const note of page.annotations) {
+          element('p', 'Annotation (' + note.kind + ')', text);
+          element('pre', note.text, text);
+        }
+      }
+      if (letter.notes.length) {
+        element('h3', 'Separate notes', text);
+        element('pre', letter.notes.join('\n'), text);
+      }
+      for (const translation of letter.translations || []) {
+        element('h3', 'Optional translation · ' + translation.image_id + ' · ' + translation.language, text);
+        element('pre', translation.text, text);
+      }
+      const scans = element('section', null, reader); scans.className = 'panel';
+      element('h3', 'Ordered source scans', scans);
+      const jobs = [];
+      for (const scan of letter.scans) {
+        const figure = element('figure', null, scans);
+        element('figcaption', scan.order + '. ' + scan.path + ' · ' + scan.image_id, figure);
+        const message = element('p', scan.status === 'missing' ? 'Scan missing from local inventory.' :
+          scan.mapping_status === 'missing_mapping' ? 'No Google Drive mapping supplied.' :
+          'Loading authenticated scan…', figure);
+        if (scan.mapping_status === 'mapped' && scan.status === 'ready') {
+          jobs.push({ scan, figure, message });
+        }
+      }
+      // Sequential downloads preserve positions and bound simultaneous image memory.
+      function next() {
+        const job = jobs.shift();
+        if (!job) return;
+        google.script.run.withSuccessHandler(answer => {
+          job.message.textContent = answer.message || '';
+          if (answer.status === 'ready') {
+            const image = element('img', null, job.figure);
+            image.alt = job.scan.filename;
+            image.onerror = () => { job.message.textContent = 'Image bytes could not be displayed.'; };
+            image.src = answer.data;
+            const a = element('a', 'Open original in Drive', job.figure);
+            a.href = answer.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+          }
+          next();
+        }).withFailureHandler(error => { job.message.textContent = error.message; next(); })
+          .loadImage({ token: result.token, letter_id: letter.letter_id, image_id: job.scan.image_id });
+      }
+      next();
+      const related = element('section', null, root); related.className = 'panel';
+      element('h3', 'Correspondence connections', related);
+      if (!result.links.length && !result.unresolved.length) element('p', 'No saved links or references.', related);
+      for (const connection of result.links) {
+        const label = relationshipLabel(connection, letter.letter_id);
+        const row = element('p', label.label + ' · ', related);
+        linkTo(label.other, label.other, row);
+        if (connection.needs_rematch) element('span', ' · Saved metadata changed; rematch required.', row);
+        if (connection.decision_needs_review) element('span', ' · Earlier decision preserved; its evidence needs review.', row);
+        if (connection.evidence && connection.evidence.length) {
+          element('pre', connection.evidence.map(e => e.image_id + ': ' + e.quote).join('\n'), related);
+        }
+        if (connection.contradictions && connection.contradictions.length) {
+          element('p', connection.contradictions.join('; '), related);
+        }
+      }
+      for (const reference of result.unresolved) {
+        element('p', 'UNRESOLVED — scan not identified: ' + reference.reference.description, related);
+      }
+      for (const warning of result.warnings) element('p', warning, related);
+      const details = element('details', null, root);
+      element('summary', 'Metadata evidence and technical provenance', details);
+      element('pre', JSON.stringify({ metadata: letter.metadata, provenance: letter.provenance }, null, 2), details);
+    }
+    function openLetter(id) {
+      document.getElementById('message').textContent = 'Loading letter…';
+      google.script.run.withSuccessHandler(result => {
+        document.getElementById('message').textContent = '';
+        renderLetter(result);
+      }).withFailureHandler(error => { document.getElementById('message').textContent = error.message; }).loadLetter(id);
+    }
+    document.getElementById('search').addEventListener('submit', event => {
+      event.preventDefault();
+      google.script.run.withSuccessHandler(result => {
+        const root = document.getElementById('results'); root.replaceChildren();
+        document.getElementById('message').textContent = result.total + ' result(s)' +
+          (result.limited ? '; first 100 shown — narrow your search.' : '');
+        for (const letter of result.letters) {
+          const row = element('p', null, root);
+          linkTo(letter.letter_id, value(letter.metadata, 'sender') + ' → ' + value(letter.metadata, 'recipient') +
+            ' · ' + value(letter.metadata, 'date') + ' · ' + letter.execution, row);
+          if (!letter.metadata.sender && letter.hints) {
+            element('span', ' · Filename hints: ' +
+              [letter.hints.sender, letter.hints.recipient, letter.hints.date].filter(Boolean).join(' / '), row);
+          }
+        }
+      }).withFailureHandler(error => { document.getElementById('message').textContent = error.message; })
+        .searchLetters(document.getElementById('query').value);
+    });
+    if (!document.getElementById('initial-error').textContent.trim() && document.body.dataset.letter) {
+      openLetter(document.body.dataset.letter);
+    }
+  </script>
+</body>
+</html>

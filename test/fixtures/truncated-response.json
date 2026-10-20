@@ -1,0 +1,22 @@
+{
+  "candidates": [
+    {
+      "finish_reason": "MAX_TOKENS",
+      "content": {
+        "parts": [
+          {
+            "text": "{\"schema_version\":1,\"pages\":[{\"image_id\":\"img_synthetic\",\"text\":\"SYNTHETIC partial reading with specimen 00012"
+          }
+        ]
+      }
+    }
+  ],
+  "model_version": "synthetic-offline-model",
+  "usage_metadata": {
+    "prompt_token_count": 80,
+    "candidates_token_count": 20,
+    "thoughts_token_count": 10,
+    "cached_content_token_count": 0,
+    "total_token_count": 110
+  }
+}

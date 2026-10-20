@@ -1,0 +1,6 @@
+{
+  "timeZone": "America/New_York",
+  "runtimeVersion": "V8",
+  "oauthScopes": ["https://www.googleapis.com/auth/drive.readonly"],
+  "webapp": {"access": "ANYONE", "executeAs": "USER_ACCESSING"}
+}

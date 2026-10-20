@@ -205,6 +205,27 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
+# Collection records, credentials, generated work, and local review/configuration.
+local/
+outputs/
+reports/
+*.jsonl
+*.lock
+*.tmp
+*.local.json
+*quota*.json
+.env.*
+!.env.example
+*.jpg
+*.jpeg
+*.JPG
+*.JPEG
+*.png
+*.tif
+*.tiff
+*.pdf
+!test/inputs/*.jpg
+
 # Ruff stuff:
 .ruff_cache/
 

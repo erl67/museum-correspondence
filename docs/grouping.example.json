@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "groups": [
+    {
+      "key": "sample-april-order",
+      "paths": [
+        "Shufeld,P-Todd-1899-04-18(A).jpg",
+        "Shufeld,P-Todd-1899-04-18(B).jpg"
+      ],
+      "source": "EXAMPLE ONLY: replace with an actual staff grouping decision",
+      "reviewer": ""
+    }
+  ]
+}
