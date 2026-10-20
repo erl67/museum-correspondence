@@ -5,7 +5,7 @@ from .storage import identity
 
 
 def current_records(store, inventory):
-    results = {r["letter_id"]: r for r in store.results()}
+    results = store.current_results()
     images = {i["image_id"]: i for i in inventory["images"]}
     reviews = [e for e in store.events() if e["kind"] == "review"]
     records = []
@@ -38,6 +38,13 @@ def current_records(store, inventory):
             doc = record["document"]
             if doc is None:
                 continue
+            if correction.get("pages"):
+                record["transcription_review"] = "in_progress"
+                record["metadata_review"] = "in_progress"
+                record["relationship_review"] = "in_progress"
+            elif correction.get("metadata"):
+                record["metadata_review"] = "in_progress"
+                record["relationship_review"] = "in_progress"
             doc["metadata"].update(deepcopy(correction.get("metadata", {})))
             for page in doc["pages"]:
                 page.update(deepcopy(correction.get("pages", {}).get(page["image_id"], {})))

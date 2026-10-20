@@ -101,6 +101,25 @@ class ExecutionTests(Workspace):
         self.assertNotEqual(first["revision_id"], second["revision_id"])
         self.assertEqual(len(self.store.results()), 2)
 
+    def test_reusing_older_matching_revision_selects_it_for_exports(self):
+        from correspondence.images import prepare_request
+        from correspondence.review import current_records
+        first, _, _ = self.execute([response(self.doc)])
+        changed = replace(self.config, temperature=0.5)
+        alternate_request = prepare_request(self.inventory, self.letter, changed)
+        alternate_document = deepcopy(self.doc)
+        alternate_document["pages"][0]["text"] = "Synthetic alternate revision"
+        transcribe(self.store, self.letter, alternate_request, changed,
+                   lambda: FakeTransport([response(alternate_document)]), quota=self.quota)
+        selected, reused, fake = self.execute([])
+        self.assertTrue(reused)
+        self.assertEqual(fake.calls, [])
+        self.assertEqual(selected["revision_id"], first["revision_id"])
+        self.assertEqual(current_records(self.store, self.inventory)[0]["result"]["revision_id"], first["revision_id"])
+        self.assertEqual(len(self.store.results()), 2)
+        self.assertEqual(self.store.latest("selection")["revision_id"], first["revision_id"])
+        self.assertEqual(selected["saved_at"], first["saved_at"])
+
     def test_checkpoint_survives_report_failure(self):
         self.execute([response(self.doc)])
         with patch("correspondence.exports.atomic_bytes", side_effect=OSError("synthetic disk error")):

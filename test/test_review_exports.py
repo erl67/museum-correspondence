@@ -36,7 +36,7 @@ class ReviewExportTests(Workspace):
         record = current_records(self.store, self.inventory)[0]
         self.assertEqual(record["document"]["pages"][0]["text"], "Human correction: café\n00012")
         self.assertEqual(record["transcription_review"], "approved")
-        self.assertEqual(record["metadata_review"], "unreviewed")
+        self.assertEqual(record["metadata_review"], "in_progress")
         self.assertEqual(self.store.results(), original)
         export_all(self.store, self.inventory, self.root / "exports")
         self.assertEqual(current_records(self.store, self.inventory)[0]["transcription_review"], "approved")
@@ -46,6 +46,20 @@ class ReviewExportTests(Workspace):
         record = current_records(self.store, self.inventory)[0]
         self.assertEqual(record["metadata_review"], "approved")
         self.assertEqual(record["transcription_review"], "unreviewed")
+
+    def test_later_changes_do_not_inherit_prior_approval(self):
+        self.review(metadata_review="approved", transcription_review="approved", relationship_review="approved")
+        self.review(pages={self.letter["image_ids"][0]: {"text": "Another synthetic correction"}})
+        record = current_records(self.store, self.inventory)[0]
+        self.assertEqual(record["transcription_review"], "in_progress")
+        self.assertEqual(record["metadata_review"], "in_progress")
+        self.assertEqual(record["relationship_review"], "in_progress")
+        self.review(metadata_review="approved", transcription_review="approved", relationship_review="approved")
+        self.review(metadata={"sender": self.doc["metadata"]["sender"]})
+        record = current_records(self.store, self.inventory)[0]
+        self.assertEqual(record["transcription_review"], "approved")
+        self.assertEqual(record["metadata_review"], "in_progress")
+        self.assertEqual(record["relationship_review"], "in_progress")
 
     def test_new_revision_preserves_but_does_not_misapply_review(self):
         self.review(metadata_review="approved")

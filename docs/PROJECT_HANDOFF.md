@@ -5,6 +5,28 @@ correspondence implementation. The repository began clean on main at `fa8abd1`, 
 six tracked JPEGs and .gitignore. The read-only reference repository was clean on main at
 `ca81d25`; its files, configuration, counters and source collection were not edited.
 
+## Resumption and integration
+
+On resumption after the usage interruption, Git was clean at merge `d2438ca`. The previously
+written implementation had been committed externally as `cb78591` (alpha); source changes
+in `54d5ef4` moved the original six byte-identical JPEGs into `Shufeldt, Percy`, replaced their
+A–D suffixes with numeric labels, and added 19 scans. Current fixtures contain 25 tracked
+JPEGs in `Shufeldt, Percy` and `Shufeldt, RW`, grouped into eight provisional letters. These
+commits and source changes were preserved; this task did not make them or revert them.
+
+The remaining final verification was completed against that state. Tests/docs now reflect
+the current collection while retaining historical six-scan hash/A–D regression coverage.
+Additional fixes bound numeric-label validation, prevent missing historical paths from
+blocking a distinct current group, persist selection of an older cache revision so exports
+show the requested result, and invalidate prior approval when human text/metadata changes.
+Current offline results are 88 Python and 18 viewer tests passing, with no failures/skips.
+
+The original local store/export history is retained. Refreshing it creates eight current
+unprocessed records and leaves two older missing-path records visible for explicit identity
+reconciliation. No automatic hash merge or purported human historical verification is applied.
+No live requests, quota reservations, uploads, deployment, new commits or pushes occurred
+during this resumed work.
+
 ## Responsibilities
 
 | Module | Responsibility |
@@ -66,9 +88,10 @@ Profiles contain reviewed text examples/source references only; no automatic tra
 
 ## Verification and limits
 
-See [testing.md](testing.md) for commands/results. The six scan hashes and expected A–B/A–D
-inventory are regression-checked. They have not been transcribed by a live service in this
-task and have no verified reference readings. Synthetic fixtures test reply behavior.
+See [testing.md](testing.md) for commands/results. Current numeric-page grouping, the original
+six scan hashes and historical A–B/A–D inventory behavior are regression-checked. None of the
+scans were transcribed by a live service in this task; no verified reference readings are
+claimed. Synthetic fixtures test reply behavior.
 
 Current limits:
 

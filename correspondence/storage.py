@@ -129,6 +129,27 @@ class Store:
     def results(self):
         return [e["data"] for e in self.events() if e["kind"] == "result"]
 
+    def current_results(self):
+        """Resolve the chosen revision, including explicit cache reuse of older history."""
+        revisions, current = {}, {}
+        for event in self.events():
+            data = event["data"]
+            if event["kind"] == "result":
+                revisions[data["revision_id"]] = data
+                current[data["letter_id"]] = data
+            elif event["kind"] == "selection":
+                result = revisions.get(data["revision_id"])
+                if not result or result["letter_id"] != data["letter_id"]:
+                    raise ValueError("Invalid saved revision selection; restore the store before continuing")
+                current[data["letter_id"]] = result
+        return current
+
+    def select(self, result, run_id):
+        current = self.current_results().get(result["letter_id"])
+        if not current or current["revision_id"] != result["revision_id"]:
+            self.append("selection", dict(letter_id=result["letter_id"],
+                        revision_id=result["revision_id"], run_id=run_id, reason="eligible cache reuse"))
+
     def reusable(self, letter_id, fingerprint, clock=None):
         clock = clock or datetime.now(timezone.utc)
         # A later failed attempt for this fingerprint supersedes an earlier success.

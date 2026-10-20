@@ -36,7 +36,7 @@ reasons, override evidence and active/retired state.
 ## Journal and blobs
 
 Each `journal.jsonl` line has `schema_version`, `event_id`, `at`, `kind`, and `data`.
-Kinds are inventory, profile, run_start, attempt_start, attempt_end, result, review,
+Kinds are inventory, profile, run_start, attempt_start, attempt_end, result, selection, review,
 matching, and run_end. Append and fsync precede dependent operations. Never edit exported
 JSON and expect it to update the journal.
 
@@ -51,6 +51,9 @@ Attempt-end records contain raw response/error references, returned usage and co
 A result references every attempt contributing to it and contains revision ID, execution
 state, raw answer text, parsed document, errors/review reasons, returned model version, saved
 timestamp, complete initial provenance and fingerprint.
+A selection event chooses a previously saved eligible revision when cache reuse returns an
+older result after another configuration was used. It adds no request, usage or revision and
+does not reset cache age. Reports and reviews follow the selected revision.
 
 Source originals are not copied into the store when a transformation differs; submitted
 bytes are retained. The original hash plus preserved source path identifies the source.

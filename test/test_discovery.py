@@ -10,13 +10,21 @@ from .helpers import ROOT, Workspace, jpeg
 
 
 class DiscoveryTests(Workspace):
-    def test_actual_six_images_and_order(self):
+    def test_current_sample_inventory_and_numeric_order(self):
         inventory = discover(ROOT / "test" / "inputs")
-        self.assertEqual([len(l["image_ids"]) for l in inventory["letters"]], [2, 4])
+        self.assertEqual([len(l["image_ids"]) for l in inventory["letters"]], [2, 4, 2, 4, 2, 7, 3, 1])
+        self.assertEqual(len(inventory["images"]), 25)
         images = {i["image_id"]: i for i in inventory["images"]}
-        for letter, labels in zip(inventory["letters"], ["AB", "ABCD"]):
-            self.assertEqual([images[i]["filename"][-6] for i in letter["image_ids"]], list(labels))
+        for letter in inventory["letters"]:
+            self.assertEqual([images[i]["filename"][-6] for i in letter["image_ids"]],
+                             [str(n) for n in range(1, len(letter["image_ids"]) + 1)])
+            self.assertEqual(letter["grouping"], "provisional")
         self.assertTrue(all(i["status"] == "ready" for i in inventory["images"]))
+
+    def test_original_six_hashes_and_historical_letter_order(self):
+        # Commit 54d5ef4 renamed these sources without changing their bytes.
+        # Recreate the former filename layout only inside a disposable test directory.
+        inventory = discover(ROOT / "test" / "inputs")
         expected = {
             "Shufeld,P-Todd-1899-04-18(A).jpg": "ceed9b03e240221a2eb618e17d5676c792e07af1f747e4adabcedd1cb4043a4d",
             "Shufeld,P-Todd-1899-04-18(B).jpg": "9ec5cb8bbb2cc9717129bb121b08f603583460024607401c1d13ef60c8949cae",
@@ -24,7 +32,17 @@ class DiscoveryTests(Workspace):
             "Shufeld,P-Todd-1899-08-07(B).jpg": "d05620bbbab228c335bafcd93a284d57109680bfcf144bd81fcee8531f7264b8",
             "Shufeld,P-Todd-1899-08-07(C).jpg": "58f3ea37a85ea8a99ab2410371f389c76f0cf38c97bfdc92ab104188969dc570",
             "Shufeld,P-Todd-1899-08-07(D).jpg": "03687d4b6e68f21af427956d3864768b35057fc8c20d62f18ce80e702295c637"}
-        self.assertEqual({i["filename"]: i["sha256"] for i in inventory["images"]}, expected)
+        by_hash = {i["sha256"]: i for i in inventory["images"]}
+        for original_name, sha in expected.items():
+            self.assertIn(sha, by_hash)
+            source = ROOT / "test" / "inputs" / by_hash[sha]["path"]
+            (self.inputs / original_name).write_bytes(source.read_bytes())
+        historical = discover(self.inputs)
+        images = {i["image_id"]: i for i in historical["images"]}
+        self.assertEqual([len(l["image_ids"]) for l in historical["letters"]], [2, 4])
+        for letter, labels in zip(historical["letters"], ["AB", "ABCD"]):
+            self.assertEqual([images[i]["filename"][-6] for i in letter["image_ids"]], list(labels))
+        self.assertEqual({i["filename"]: i["sha256"] for i in historical["images"]}, expected)
 
     def test_missing_intermediate_pages(self):
         self.setup_letter(("A-B-1899(A).jpg", "A-B-1899(C).jpg"), prepare=False)
@@ -47,6 +65,25 @@ class DiscoveryTests(Workspace):
     def test_unknown_filename_visible(self):
         self.setup_letter(("misc.jpg",), prepare=False)
         self.assertEqual(self.letter["grouping"], "needs_review")
+
+    def test_large_numeric_label_does_not_allocate_a_range_to_its_value(self):
+        self.setup_letter(("A-B-1899(999999999999999999999).jpg",), prepare=False)
+        self.assertIn("missing initial or intermediate page", self.letter["review_reasons"])
+
+    def test_missing_old_paths_do_not_block_distinct_current_group(self):
+        self.setup_letter(("old/A-B-1899(1).jpg",))
+        # Simulate an external file move; the application itself never moves scans.
+        raw = (self.inputs / "old/A-B-1899(1).jpg").read_bytes()
+        (self.inputs / "old/A-B-1899(1).jpg").unlink()
+        (self.inputs / "new").mkdir()
+        (self.inputs / "new/A-B-1899(1).jpg").write_bytes(raw)
+        updated = discover(self.inputs, self.inventory)
+        current = next(l for l in updated["letters"] if l["hints"]["folder"] == "new")
+        old = next(l for l in updated["letters"] if l["hints"]["folder"] == "old")
+        self.assertNotEqual(current["letter_id"], old["letter_id"])
+        self.assertEqual(current["grouping"], "provisional")
+        self.assertEqual(old["grouping"], "needs_review")
+        self.assertTrue(any(i["status"] == "missing" for i in updated["images"]))
 
     def test_corrupt_unsupported_missing_remain_visible(self):
         jpeg(self.inputs / "A-B-1899.jpg")

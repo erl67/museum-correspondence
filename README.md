@@ -9,9 +9,11 @@ are provisional hints. The document reading, normalized search values, and staff
 remain separate. **A complete service response is not a verified historical transcription.**
 
 The first version provides a Python command line and a small read-only Google Apps Script
-viewer. No source spreadsheet is needed. The six tracked JPEGs in `test/inputs` form two
-provisional records with two and four ordered pages. They are source fixtures, not verified
-reference transcriptions, and do not establish a reply pair.
+viewer. No source spreadsheet is needed. The current `test/inputs` contains 25 tracked JPEGs
+in two correspondent folders, forming eight provisional letters with 2, 4, 2, 4, 2, 7, 3,
+and 1 ordered pages. The original six scans remain byte-identical after their external move
+into `Shufeldt, Percy` and relabelling from A–D to numeric page suffixes. These are source
+fixtures, not verified reference transcriptions, and do not establish confirmed reply links.
 
 ## Install on Windows
 
@@ -109,6 +111,10 @@ Review JSON specifies the saved revision, corrected fields/text, reason/source a
 reviewer. Corrections are append-only. Metadata approval, word-for-word transcription approval,
 grouping and relationship review have separate states. New source pages or a new service
 revision leave prior corrections in history and require deliberate rebasing.
+Changing page text returns transcription, metadata and relationship review to `in_progress`;
+changing metadata returns metadata and relationship review to `in_progress`, unless the same
+review explicitly sets their status. Moving source files outside this program leaves their
+old inventory paths marked missing; it never silently merges records by matching hashes.
 
 Reply candidates retain evidence and alternatives. They are never confirmed automatically.
 A reply link points **from the reply to the earlier letter**. Staff can confirm or reject
@@ -128,7 +134,7 @@ application.
 node --test apps_script/viewer/test_viewer.cjs
 ```
 
-These are software tests using synthetic readings and the six source-image inventory.
+These are software tests using synthetic readings and the current source-image inventory.
 They do not measure historical reading accuracy. Authenticated Drive access and actual Gemini
 account/model availability still need checking in their respective authorized workflows.
 

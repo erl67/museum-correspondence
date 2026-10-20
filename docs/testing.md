@@ -10,7 +10,7 @@ git diff --check
 ```
 
 Recorded on **2026-10-20**, Windows, Python **3.14.2**, Node **24.19.0**:
-**83 Python tests passed, 0 failed, 0 skipped; 18 viewer tests passed, 0 failed,
+**88 Python tests passed, 0 failed, 0 skipped; 18 viewer tests passed, 0 failed,
 0 skipped.** Pinned runtime dependencies were installed in this repository's `.venv`:
 google-genai 2.23.0, Pillow 12.3.0, tzdata 2026.3. The SDK emits a Python 3.14
 `_UnionGenericAlias` deprecation warning; it does not fail the suite.
@@ -20,10 +20,18 @@ The actual pinned SDK preserves `thinking_level` within `thinkingConfig`; the te
 the real serialized high-thinking value. Both real-SDK success and error HTTP paths pass using
 `httpx.MockTransport`. No test sends network requests or uses a real API key.
 
+After the chat pause, the repository was clean at merged commit `d2438ca`: implementation
+commit `cb78591` was present alongside scan changes from `54d5ef4`. The baseline rerun had
+82 Python passes and one stale six-file inventory expectation failure; all 18 viewer tests
+passed. The current suite incorporates those source changes without moving or editing any
+scan. It preserves the original six SHA-256 checks and replays their former A–D names in
+temporary test storage. Added regressions cover numeric-label bounds, historical missing
+paths, selecting older eligible cache revisions for exports, and approval invalidation.
+
 ## Coverage
 
-- Actual six-file inventory under singular `test/inputs`, original SHA-256 values, two/four
-  image grouping and exact A–B/A–D order.
+- Current 25-file inventory under singular `test/inputs`, eight numeric-page groups, original
+  six SHA-256 values, and replay of their former two/four-image A–B/A–D grouping.
 - Folder/name collisions, duplicate/mixed labels, missing pages, ambiguous filenames,
   corrupt/unsupported/missing images, overrides, explicit regrouping, stable IDs and source changes.
 - Original-byte preservation, EXIF transform, optional resize, request limits and fingerprint
@@ -62,8 +70,13 @@ No optional skips hide missing SDK coverage: install requirements before running
 ```
 
 The initial smoke check generated two unprocessed letter reports plus all CSV/JSON tables.
-No quota file or API attempts were created. Matching found zero proposals because no
-transcriptions exist; it did not infer a reply from the filenames.
+After the external source reorganization, refreshing the same store preserves those two
+historical records with missing paths and adds eight current provisional records for the
+25 scans. Missing historical records do not block the current groups. Their identities are
+not automatically merged; an explicit grouping override can reconcile them after review.
+The old journal bytes remain an exact prefix of the refreshed journal. No quota file or API
+attempts were created. Matching finds zero proposals because no transcriptions exist; it
+does not infer replies from filenames.
 
 These tests establish software behavior, not reading accuracy. Synthetic fixtures are clearly
 labelled and do not derive a supposed reference transcription from the museum scans.

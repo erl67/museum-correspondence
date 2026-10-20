@@ -146,6 +146,7 @@ def transcribe(store, letter, request, config, transport_factory, *, fresh=False
         raise ValueError("Interrupted request: inspect saved work, then explicitly use --retry-interrupted")
     cached = None if fresh else store.reusable(letter["letter_id"], request["fingerprint"])
     if cached:
+        store.select(cached, run_id)
         return cached, True
     # Freeze submitted bytes and the complete request before looking up credentials.
     for page, data in zip(request["provenance"]["images"], request["image_data"], strict=True):

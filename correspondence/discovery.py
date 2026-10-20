@@ -110,7 +110,7 @@ def discover(root, previous=None, overrides=None):
                 numbers = [int(label) for label in labels]
                 if len(set(numbers)) != len(numbers):
                     reasons.append("duplicate numeric page label")
-                if sorted(set(numbers)) != list(range(1, max(numbers) + 1)):
+                if sorted(set(numbers)) != list(range(1, len(set(numbers)) + 1)):
                     reasons.append("missing initial or intermediate page")
             elif all(len(label) == 1 and label.isalpha() for label in labels):
                 numbers = [ord(label) - 64 for label in labels]
@@ -153,7 +153,7 @@ def discover(root, previous=None, overrides=None):
         letters.append(dict(letter_id=lid, group_key=key, image_ids=membership, hints=hints,
                             grouping=grouping if not reasons or grouping == "reviewed" else "needs_review",
                             review_reasons=sorted(set(reasons)), override=override, active=True))
-        if match:
+        if match and any(by_path[p]["status"] != "missing" for p in paths):
             hint_groups[tuple(match.groupdict().values())].append(letters[-1])
     for same in hint_groups.values():
         if len(same) > 1:

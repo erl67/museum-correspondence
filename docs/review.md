@@ -65,6 +65,10 @@ Add this under the review's `metadata`. A date correction also needs `precision`
 The corrected document must retain exact page coverage and the document schema.
 Use `approved` only after the corresponding work was actually checked. Approval leaves
 uncertainty/conflict reasons visible for future readers; it is not an assertion of perfection.
+Later page corrections reset transcription, metadata and relationship review to `in_progress`.
+Later metadata corrections reset metadata and relationship review to `in_progress`. The
+correction can explicitly approve a state when that updated work was checked. Earlier approval
+is retained in history, rather than automatically carried onto changed content.
 The first version requires a current structurally complete result for field/text correction;
 malformed failed responses remain readable but need a subsequent valid service result before
 using this correction operation. It does not silently import failures as complete.
