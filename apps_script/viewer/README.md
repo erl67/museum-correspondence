@@ -12,6 +12,9 @@ the maintaining staff member's later authorized setup.
 
 1. Run Python `inventory`, then any authorized transcription/review work.
 2. Run `match` and `export`. Unprocessed records can be displayed without transcriptions.
+   For the Drive collection, `export --publish-text` also saves
+   `Correspondence_viewer.json` at the scan root, alongside human-readable text reports.
+   The viewer continues to consume JSON internally; staff do not need to open that file.
 3. Use `images.csv` to create an image-ID mapping under ignored `local/drive-map.json`.
    Verify each Drive scan is the same original byte content before recording its local hash.
 
@@ -47,9 +50,10 @@ viewer bundle. Ordinary exports without that option explicitly show missing mapp
 3. Set `ACCESS_FILE_ID` in Code.gs to the institution's existing collection access-gate file
    (for example the already-shared master institutional workbook). It is an authorization
    gate only; this collection does not need a catalogue spreadsheet.
-4. Deliberately upload the generated `viewer.json` through the institution's approved Drive
-   workflow, with its existing restricted readership, and set `EXPORT_FILE_ID` to that file.
-   Uploading is manual; no uploader or sharing modification exists in this project.
+4. Use the synced `Correspondence_viewer.json` created by `export --publish-text`, or upload
+   the local `viewer.json` through the institution's approved Drive workflow, and set
+   `EXPORT_FILE_ID` to that file's real Drive ID. Verify the synced file ID after updates.
+   No Drive API uploader or sharing modification exists in this project.
 5. Use **Execute as: User accessing the web app** (`USER_ACCESSING`).
    The manifest's `ANYONE` audience means signed-in Google accounts, not anonymous scan sharing.
    The reader must pass the configured gate and independently have read access to the export

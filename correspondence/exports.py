@@ -9,6 +9,7 @@ from .review import current_records, people
 from .schema import usable_date
 from .storage import atomic_bytes, atomic_json, now
 from .usage import aggregate
+from .plaintext import reading, text_paths
 
 
 def cell(value):
@@ -93,10 +94,15 @@ def export_all(store, inventory, output, mapping=None):
         if entry.get("original_sha256") != images[iid]["sha256"]:
             raise ValueError("Drive mapping hash differs from inventoried source; review the mapping")
     catalogue, image_rows, evidence_rows, entity_rows, texts, bundle = [], [], [], [], [], []
+    named_paths = text_paths(records, images)
     for record in records:
         text = report(record, images, attempts)
         atomic_bytes(output / "letters" / (record["letter_id"] + ".txt"), text.encode("utf-8"))
-        texts.append(text)
+        plain = reading(record, images)
+        named_path = "readable/" + named_paths[record["letter_id"]].as_posix()
+        atomic_bytes(output / named_path, plain.encode("utf-8"))
+        if record["active"]:
+            texts.append(plain)
         doc = record["document"]
         meta = doc["metadata"] if doc else {}
         catalogue.append(dict(letter_id=record["letter_id"], active=record["active"],
@@ -114,7 +120,7 @@ def export_all(store, inventory, output, mapping=None):
                          date_precision=meta.get("date", {}).get("precision"),
                          summary=doc["summary"] if doc else None,
                          review_reasons_json=json.dumps(record["review_reasons"], ensure_ascii=False),
-                         report_path=f"letters/{record['letter_id']}.txt"))
+                         report_path=named_path))
         scans = []
         for order, iid in enumerate(record["image_ids"], 1):
             image = images[iid]

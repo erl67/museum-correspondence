@@ -40,7 +40,7 @@ def inspect_file(path, root, collection, previous):
     return row
 
 
-def discover(root, previous=None, overrides=None):
+def discover(root, previous=None, overrides=None, generated_paths=()):
     root = Path(root).resolve()
     if not root.is_dir():
         raise ValueError(f"Input root is not an accessible directory: {root}")
@@ -50,6 +50,8 @@ def discover(root, previous=None, overrides=None):
     collection = previous.get("collection_id", str(uuid.uuid5(uuid.NAMESPACE_URL, str(root))))
     old_images = {i["path"]: i for i in previous.get("images", [])}
     images = []
+    # Only exact files owned by this store's publication manifest are excluded.
+    generated = set(generated_paths)
     # walk raises on inaccessible directories instead of silently dropping their contents.
     def walk_error(error):
         raise error
@@ -59,6 +61,8 @@ def discover(root, previous=None, overrides=None):
                 files.append(directory)
                 dirs.remove(directory)
         for name in sorted(files):
+            if (folder / name).relative_to(root).as_posix() in generated:
+                continue
             images.append(inspect_file(folder / name, root, collection, old_images))
     present = {i["path"] for i in images}
     images += [dict(i, status="missing") for p, i in old_images.items() if p not in present]

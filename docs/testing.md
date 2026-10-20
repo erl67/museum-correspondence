@@ -10,7 +10,7 @@ git diff --check
 ```
 
 Recorded on **2026-10-20**, Windows, Python **3.14.2**, Node **24.19.0**:
-**88 Python tests passed, 0 failed, 0 skipped; 18 viewer tests passed, 0 failed,
+**100 Python tests passed, 0 failed, 0 skipped; 18 viewer tests passed, 0 failed,
 0 skipped.** Pinned runtime dependencies were installed in this repository's `.venv`:
 google-genai 2.23.0, Pillow 12.3.0, tzdata 2026.3. The SDK emits a Python 3.14
 `_UnionGenericAlias` deprecation warning; it does not fail the suite.
@@ -49,6 +49,11 @@ paths, selecting older eligible cache revisions for exports, and approval invali
   people/aliases, profile approval/versioning/bounds/batch isolation.
 - Formula-safe CSV, significant-zero canonical strings, multiline Unicode, offline reports,
   explicit missing Drive mappings, hash-bound mappings and unprocessed/failed catalogue rows.
+- Transcription-first named reports, source-folder publication and exact generated-file
+  exclusions, protection of unowned/edited text and source paths, interrupted publication
+  recovery, name collisions, current/absent/stale readings and pending-only continuation.
+- Explicit byte-verified external filename reconciliation, preserved IDs/results/journal
+  history, and rejection of changed bytes, path escapes and duplicate targets.
 - Synthetic strong reply evidence, ambiguous alternatives, misleading shared topics,
   unavailable references, chronology conflicts, mentions/enclosures, branching, cycles,
   explicit confirmations/rejections and metadata-driven rematching.

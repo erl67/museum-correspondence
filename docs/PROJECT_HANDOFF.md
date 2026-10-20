@@ -29,6 +29,37 @@ during this resumed work.
 
 ## Responsibilities
 
+### Drive reading/export update — 2026-10-20
+
+The requested daily allocation is now **100 attempts**, still 2 starts/minute. The ignored
+`local/config.json` contains that override; the code default also applies to commands without
+`--config`. Existing counters are preserved. `transcribe --pending` skips current complete
+readings regardless of cache age and is the preferred continuation command.
+
+`plaintext.py` renders staff reports with ordered transcription text before plain-English
+metadata/notes. `exports.py` retains technical ID reports and JSON/CSV, and adds readable
+filenames plus a plain combined report. `publication.py` implements explicit `--publish-text`:
+named TXT beside scans, per-folder combined TXT, collection-wide TXT and a viewer JSON copy.
+Publication is remembered per store. Journalled output hashes protect unowned/edited files,
+allow interrupted publication recovery, and identify exact generated paths to exclude from
+discovery. This is the intentional exception to keeping full diagnostic exports outside scans.
+Files sync through Drive for desktop; no sharing or deployment changes are performed.
+
+`relocation.py` and `reconcile-paths --file` apply only explicit old/new path maps verified
+against original SHA-256 values. Stable IDs, prior responses and all old journal bytes remain
+intact. No automatic hash-based merge is added. In the local Drive store, the user corrected
+filenames and identified the page-2 naming mistake. A byte-verified map plus explicit local
+grouping overrides preserve 44 source images and 18 saved completed readings; 3 letters
+remain unprocessed, with no active grouping blocks. The April 18 letter has two pages, as
+confirmed by the user. Mixed `Shufeldtt`/`Shufeldt` September filenames are handled by an
+override rather than editing scans. All these decisions are grouping/identity only.
+
+25 generated Drive files were saved and read back: 21 individual reports, two folder reports,
+one collection report and one viewer bundle. All saved page text was checked for inclusion;
+the 44 scans and the earlier journal prefix are unchanged. No new Gemini attempts were made
+by this update. The viewer still needs real Drive mappings/access-gate/export IDs and deployment.
+Offline verification: **100 Python and 18 viewer tests passed, no failures or skips**.
+
 | Module | Responsibility |
 | --- | --- |
 | discovery | Recursive JPEG inventory, integrity, conservative folder-scoped grouping, persistent IDs, overrides and missing/retired history |
@@ -78,7 +109,7 @@ being silently skipped. Raw response recovery can avoid repeat payment after an 
 result checkpoint; unknown network outcomes require explicit retry acknowledgement.
 
 Quota state is deliberately separate and incompatible with old counters. Defaults are a
-conservative 2 RPM/20 attempts/day allocation, not a second project allowance. Coordination
+2 RPM/100 attempts/day allocation, not a second project allowance. Coordination
 with the existing application is a staff operational responsibility.
 
 Reviews bind to one service revision, and relationship decisions retain the document state
@@ -101,7 +132,8 @@ Current limits:
 - JSON MIME requests use the prompt contract plus local validation; no claimed semantic guarantee.
 - Failed malformed responses are preserved, but local correction requires a current structurally
   complete base result. There is no salvage-import operation yet.
-- Text reports/CSV/viewer exports are local. Viewer installation, actual Drive mapping/access,
+- Full reports/CSV/history are local; explicitly enabled reader copies can be saved beside
+  Drive scans. Viewer installation, actual Drive mapping/access,
   native Google rendering and any future service-account availability require staff setup.
 - Pairwise matching and full export rereads are appropriate for an initial collection, not
   unlimited scale. Matching uses saved structured references rather than automatic prose NLP.

@@ -9,7 +9,7 @@
   "timeout": 180,
   "attempts": 3,
   "rpm": 2,
-  "daily_limit": 20,
+  "daily_limit": 100,
   "quota_file": "local/quota.json",
   "quota_timezone": "America/Los_Angeles",
   "max_retry_wait": 120,

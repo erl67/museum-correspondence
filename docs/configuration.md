@@ -2,7 +2,9 @@
 
 Global options precede the command. All relative paths are relative to the current working
 directory. Use `--store` consistently for a collection; its recorded absolute input root
-cannot silently change. Source, store, quota and export paths must be separated.
+cannot silently change. Source, store, quota and full export paths must be separated.
+The explicit `--publish-text` option additionally writes managed reader copies beside scans;
+it does not move the store, quota or full diagnostic exports into the scan folder.
 
 Copy `docs/config.example.json` to `local/config.json`, edit it, then:
 
@@ -24,11 +26,16 @@ Unavailable models/parameters are reported as errors. No fallback model is selec
 | `max_request_bytes`, `max_pages` | 19,000,000 conservative estimated inline bytes; 40 pages |
 | `timeout` | 180 seconds per attempt |
 | `attempts` | 3 total attempts per letter, including service and format retries |
-| `rpm`, `daily_limit` | 2 starts/minute, 20 attempts/day; local allocation, not entitlement |
+| `rpm`, `daily_limit` | 2 starts/minute, 100 attempts/day; local allocation, not entitlement |
 | `quota_file` | `local/quota.json`; persistent counter and cross-process start spacing |
 | `quota_timezone` | `America/Los_Angeles`; `tzdata` installed on Windows |
 | `max_retry_wait` | 120 seconds; larger server hints pause, never shorten the hint |
 | `rates` | null: costs unknown; no copied/stale provider price table |
+
+The 100-attempt default applies without a configuration file. A local configuration is
+optional and is loaded only with `--config "local/config.json"`; `.env` accepts API keys,
+not operational settings. A minimal override is `{"daily_limit": 100}`. Changing a limit
+does not reset the persistent counter or clear provider exhaustion recorded for the day.
 
 ## Shared quota
 
@@ -93,6 +100,12 @@ A later failed result for that fingerprint prevents falling back to an earlier s
 `--fresh` bypasses reuse while preserving history. `export` never reads credentials or scans
 and works for older saved revisions. Normal transcription cache checks occur after source
 integrity/payload checks.
+
+`transcribe --pending` explicitly selects only active letters without a current complete
+saved result. Unlike `--all`, it skips completed readings even after 48 hours or after a
+byte-verified path rename. Stale/failed/unprocessed letters remain eligible; grouping and
+source integrity checks still apply before any request. Use `--letter` or `--all` deliberately
+when a new model/prompt reading is wanted for completed letters.
 
 The store lock covers a whole mutation/batch. Every request starts with a durable event;
 submitted bytes and prompt are already content-addressed. Raw responses and usage are saved

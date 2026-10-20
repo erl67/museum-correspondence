@@ -15,6 +15,8 @@ from .relationships import match
 from .review import apply_review, current_records
 from .storage import Store, identity, lock, read_json
 from .usage import aggregate, read_usage
+from .publication import publication_state, publish_text
+from .relocation import reconcile_paths
 
 
 def parser():
@@ -35,15 +37,20 @@ def parser():
     sub = commands.add_parser("transcribe", help="Explicit Gemini requests or eligible 48-hour cache reuse")
     scope = sub.add_mutually_exclusive_group(required=True)
     scope.add_argument("--all", action="store_true")
+    scope.add_argument("--pending", action="store_true", help="Only letters without a current complete result, regardless of cache age")
     scope.add_argument("--letter", action="append", help="Stable letter ID; repeat for multiple letters")
     sub.add_argument("--fresh", action="store_true", help="Bypass completed cache; retain all history")
     sub.add_argument("--retry-interrupted", action="store_true", help="Accept possible repeat charges after unknown outcome")
     sub.add_argument("--env-file", help="Explicit credential file; otherwise environment only")
     sub.add_argument("--profile", help="Explicit approved handwriting context, frozen for this batch")
     sub.add_argument("--output", default="local/exports")
+    sub.add_argument("--publish-text", action="store_true", help="Enable managed text copies beside source scans for this store")
     sub = commands.add_parser("export", help="Regenerate all reports/CSV/viewer from saved records; zero requests")
     sub.add_argument("--output", default="local/exports")
     sub.add_argument("--mapping", help="Reviewed image-ID to Drive-file-ID mapping")
+    sub.add_argument("--publish-text", action="store_true", help="Enable managed text copies beside source scans for this store")
+    sub = commands.add_parser("reconcile-paths", help="Record explicitly mapped external scan renames after verifying unchanged bytes")
+    sub.add_argument("--file", required=True, help="Local JSON with version, source and paths")
     commands.add_parser("match", help="Local relationship candidates across all saved letters")
     sub = commands.add_parser("review", help="Append a human correction, person identity, or link decision")
     sub.add_argument("--file", required=True)
@@ -76,6 +83,14 @@ def safe_destinations(inventory, *paths):
             raise ValueError("Store, exports and quota must be outside source scans")
 
 
+def refresh_exports(store, inventory, args):
+    count = export_all(store, inventory, args.output, read_json(args.mapping) if getattr(args, "mapping", None) else None)
+    if getattr(args, "publish_text", False) or publication_state(store, inventory):
+        total = publish_text(store, inventory, args.output)
+        print(f"Saved {total} reader/viewer files beside scans in {inventory['input_root']}")
+    return count
+
+
 def run(args):
     config = load_config(args.config)
     store = Store(args.store)
@@ -84,7 +99,8 @@ def run(args):
         override = read_json(args.overrides) if args.overrides else (previous or {}).get("overrides")
         if args.overrides and override is None:
             raise ValueError("Override file not found")
-        inventory = discover(args.input, previous, override)
+        state = publication_state(store, previous) if previous else {}
+        inventory = discover(args.input, previous, override, state.get("files", {}))
         safe_destinations(inventory, store.root, config.quota_file)
         if args.command == "dry-run":
             profile = load_profile(args.profile)
@@ -108,7 +124,7 @@ def run(args):
             if store.latest("inventory") != previous:
                 raise ValueError("Inventory changed concurrently; rerun")
             store.append("inventory", inventory)
-            export_all(store, inventory, args.output)
+            refresh_exports(store, inventory, args)
         print_inventory(inventory)
         print(f"Saved inventory and offline exports to {args.output}")
         return 0
@@ -125,10 +141,14 @@ def run(args):
         return 0
     with lock(store.root / "store.lock"):
         inventory = require_inventory(store)
-        if args.command == "export":
+        if args.command == "reconcile-paths":
+            updated = reconcile_paths(inventory, read_json(args.file))
+            store.append("inventory", updated)
+            print("Recorded verified source path changes. Scan bytes, IDs, prior responses and reviews are preserved.")
+        elif args.command == "export":
             if args.mapping and not Path(args.mapping).exists():
                 raise ValueError("Mapping file not found")
-            count = export_all(store, inventory, args.output, read_json(args.mapping) if args.mapping else None)
+            count = refresh_exports(store, inventory, args)
             print(f"Exported {count} records to {args.output}; zero requests.")
         elif args.command == "review":
             patch = read_json(args.file)
@@ -143,8 +163,10 @@ def run(args):
                   "No automatic confirmations; run export to refresh the viewer.")
         elif args.command == "transcribe":
             safe_destinations(inventory, args.output)
+            complete = {r["letter_id"] for r in current_records(store, inventory) if r["execution"] == "complete"}
             selected = [l for l in inventory["letters"] if l["active"]
-                        and (args.all or l["letter_id"] in args.letter)]
+                        and (args.all or (args.pending and l["letter_id"] not in complete)
+                             or (args.letter and l["letter_id"] in args.letter))]
             if args.letter and set(args.letter) != {l["letter_id"] for l in selected}:
                 raise ValueError("Unknown or retired selected letter ID")
             profile = load_profile(args.profile)  # One frozen copy for the whole batch.
@@ -168,9 +190,11 @@ def run(args):
                     failures += int(result["execution"] != "complete")
                     print(f"{letter['letter_id']}: {result['execution']}" + (" (reused; zero new requests)" if cached else ""))
                     # Canonical results were already checkpointed; this may safely fail.
-                    export_all(store, inventory, args.output)
+                    refresh_exports(store, inventory, args)
                     if result.get("stop_batch"):
                         break
+                # Also refresh status reports when every selected letter was blocked/skipped.
+                refresh_exports(store, inventory, args)
             finally:
                 starts = {e["data"]["attempt_id"] for e in store.events()
                           if e["kind"] == "attempt_start" and e["data"]["run_id"] == run_id}

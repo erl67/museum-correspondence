@@ -25,6 +25,36 @@ file is specified. A reviewed override resolves grouping ambiguity but never mak
 unreadable/missing scan transcribable. Discovery warnings remain visible. Review order after
 adding pages: the previous override does not silently acquire new pages.
 
+An optional `title` supplies a readable report filename without changing scan names or
+historical metadata. Otherwise the name comes from the first scan with page suffixes removed.
+
+## Reconcile filenames changed outside the application
+
+After staff rename scans, preserve the existing store and its saved results. Create an
+explicit local map rather than silently matching and merging records by hash:
+
+```json
+{
+  "version": 1,
+  "source": "Staff corrected the filename spelling; same original image",
+  "paths": {
+    "Folder/OldName(1).jpg": "Folder/CorrectName(1).jpg"
+  }
+}
+```
+
+```powershell
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" reconcile-paths --file "local/source-renames.json"
+```
+
+The old path must be absent, the new JPEG must exist within the same input root, and its
+SHA-256 must equal the saved original. The command appends a new inventory, preserving image
+and letter IDs, earlier paths/responses, and review history. It never moves or edits a scan.
+Then refresh `inventory` with any needed grouping overrides. Correcting page membership
+still requires explicit grouping review; a filename map does not approve a transcription.
+Root-folder relocation is not supported by this command. Use `--pending` when continuing
+to avoid re-requesting completed readings after filename changes.
+
 ## Correct a reading or metadata
 
 Example shape (replace identifiers and source text):

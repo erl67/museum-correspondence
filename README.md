@@ -43,8 +43,11 @@ It needs no credentials and creates no reports, journals, quota reservations, or
 
 For the full collection, use its actual scan directory and a separate store:
 
+For step-by-step Windows instructions covering both Drive subfolders and `.txt` output,
+see [Transcribe the Drive collection](docs/drive-transcription.md).
+
 ```powershell
-.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" inventory --input "G:\My Drive\Correspondance" --output "local/full-exports"
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" inventory --input "G:\My Drive\Correspondence" --output "local/full-exports"
 ```
 
 Check that the selected root contains the intended scans. Every unsupported/unreadable file
@@ -60,19 +63,25 @@ account allocation before choosing to run them. No live requests were made while
 this version.
 
 Copy `.env.example` to `.env` and enter your own key locally. The example contains no key.
+If `.env` already exists, keep it rather than replacing it with the empty example.
 The program reads that file only when explicitly passed; it also supports `GEMINI_API_KEY`
 or `GOOGLE_API_KEY` in the process environment. Never commit credentials.
 
 ```powershell
-Copy-Item .env.example .env
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 # Edit .env locally; do not paste its contents into a report or commit.
 .\.venv\Scripts\python.exe -m correspondence transcribe --letter "LETTER_ID_FROM_INVENTORY" --env-file .env
 .\.venv\Scripts\python.exe -m correspondence transcribe --all --env-file .env
 ```
 
+These commands use the default fixture store. For the Drive collection, use the commands
+in the [Drive guide](docs/drive-transcription.md), including `--store "local/full-collection"`
+and `--output "local/full-exports"` on each transcription/export command. The output path
+from `inventory` is not remembered by later commands.
+
 Defaults are `gemini-3.5-flash-lite`, temperature `1.0`, high thinking. There is no automatic
-provider/model substitution. The local allocation is deliberately conservative: 2 starts/minute
-and 20 attempts/day, including retries. **It is not an additional provider allowance.**
+provider/model substitution. The local allocation is 2 starts/minute
+and 100 attempts/day, including retries. **It is not an additional provider allowance.**
 The egg-slip application may share the same Google project quota; coordinate allocations.
 See [configuration](docs/configuration.md) before using the full collection.
 
@@ -81,6 +90,8 @@ old are reused without a request. Older results remain archived but a transcript
 spend again. Use `export` to read or regenerate older work for free. `--fresh` explicitly
 requests another transcription and retains previous revisions. Interrupted requests with an
 unknown service outcome require inspection and explicit `--retry-interrupted`.
+Use `transcribe --pending` to process only letters without a current complete result,
+regardless of cache age. This is the usual continuation command after exporting saved work.
 
 ## Read, review, and connect letters
 
@@ -88,8 +99,9 @@ Default outputs:
 
 | File | Use |
 | --- | --- |
-| `local/exports/letters/ltr_….txt` | Readable UTF-8 report with source order, status, metadata/evidence, page boundaries and separate notes |
-| `local/exports/combined.txt` | Combined readable reports |
+| `local/exports/readable/<source folder>/<letter filename>.txt` | Staff report: actual letter text first, ordered pages, annotations and separate plain-English notes; no JSON sections |
+| `local/exports/combined.txt` | All active letter readings in one text file |
+| `local/exports/letters/ltr_….txt` | Detailed diagnostic report with archival IDs, JSON evidence and technical provenance |
 | `local/exports/catalogue.csv` | One row per letter, including blocked/unprocessed/failed/retired records |
 | `images.csv`, `evidence.csv`, `entities.csv` | Related tables with stable IDs; original paths, evidence, and identifiers |
 | `relationships.csv`, `unresolved.csv` | Proposed/confirmed/rejected links and references to unidentified letters |
@@ -99,6 +111,21 @@ Default outputs:
 Open CSVs using Excel's **Data → From Text/CSV** and set identifier columns to **Text** to
 preserve leading zeros. Formula-like cells are prefixed with an apostrophe in CSV only.
 The canonical transcription and plain-text report are unchanged.
+
+To also save named text files beside the original scans on Drive, enable publication once
+for that store:
+
+```powershell
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" export --output "local/full-exports" --publish-text
+```
+
+This writes `<letter filename>.txt` in each scan folder, a `<folder>_transcriptions.txt`
+combined file in each correspondent folder, and `Correspondence_transcriptions.txt` at the
+collection root. It also writes `Correspondence_viewer.json` for the existing web viewer;
+staff read the text files. Later `inventory`, `transcribe` and `export` commands for that
+store refresh these copies automatically. Drive for desktop syncs these generated files.
+Unowned files, edited reports and scans are never overwritten. Only exact managed output
+paths are excluded from later scan discovery. See the [Drive guide](docs/drive-transcription.md).
 
 ```powershell
 .\.venv\Scripts\python.exe -m correspondence show --letter "LETTER_ID_FROM_INVENTORY"
@@ -127,7 +154,8 @@ The [Apps Script viewer](apps_script/viewer/README.md) searches saved text and m
 ordered scans beside transcriptions, and navigates correspondence links. It makes no
 transcription-service calls. It needs a deliberate Drive mapping and the institution's existing
 access-gate configuration. Nothing is uploaded, deployed, made public, or shared by the Python
-application.
+application through the Drive API. Explicit `--publish-text` writes generated files into the
+local Drive folder for Drive for desktop to sync; it does not change sharing or deploy a viewer.
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s test -t . -v

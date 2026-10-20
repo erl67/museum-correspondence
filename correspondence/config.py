@@ -18,7 +18,7 @@ class Config:
     timeout: float = 180
     attempts: int = 3
     rpm: float = 2
-    daily_limit: int = 20
+    daily_limit: int = 100
     quota_timezone: str = "America/Los_Angeles"
     quota_file: str = "local/quota.json"
     max_retry_wait: float = 120
