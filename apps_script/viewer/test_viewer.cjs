@@ -90,6 +90,26 @@ test('missing letter is not fabricated', () => {
   assert.throws(() => context().sandbox.loadLetter('unknown'), /absent/);
 });
 
+test('compact filenames are searchable and displayed in exported page order', () => {
+  const bundle = fixture();
+  const letter = bundle.letters[0];
+  const names = ['Sender-Recipient-18990501_01.jpg', 'Sender-Recipient-18990501_02.jpg'];
+  letter.hints = { sender: 'Sender', recipient: 'Recipient', date: '1899-05-01', filenames: names };
+  letter.scans.forEach((scan, i) => { scan.filename = names[i]; scan.path = 'folder/' + names[i]; });
+  const c = context(bundle);
+  for (const query of ['18990501', '1899-05-01', names[1]]) {
+    assert.equal(c.sandbox.searchLetters(query).total, 1);
+  }
+  const loaded = c.sandbox.loadLetter('ltr_one');
+  const f = frontend();
+  f.sandbox.renderLetter(loaded);
+  const text = allNodes(f.ids.record).map(n => n.textContent).join('\n');
+  assert.ok(text.includes(names[0]) && text.includes(names[1]));
+  assert.equal(loaded.letter.scans[0].image_id, 'img_B');
+  assert.equal(loaded.letter.scans[1].image_id, 'img_A');
+  assert.equal(c.counts().imageReads, 0);
+});
+
 test('authenticated mapped image hash checked and original URL built server side', () => {
   const c = context();
   const result = c.sandbox.loadLetter('ltr_one');

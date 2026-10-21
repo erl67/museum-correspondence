@@ -6,9 +6,7 @@ import re
 import uuid
 from PIL import Image
 from .storage import digest
-
-LABEL = re.compile(r"^(.*?)[ ]*\(([A-Za-z]+|\d+)\)$")
-HINT = re.compile(r"^(?P<sender>[^-]+)-(?P<recipient>[^-]+)-(?P<date>\d{4}(?:-\d{1,2}){0,2})$")
+from .naming import filename_hints, split_page
 
 
 def stable(prefix, collection, key):
@@ -96,9 +94,7 @@ def discover(root, previous=None, overrides=None, generated_paths=()):
     for row in images:
         if row["path"] in claimed:
             continue
-        match = LABEL.match(Path(row["filename"]).stem)
-        base = match[1] if match else Path(row["filename"]).stem
-        label = match[2].upper() if match else None
+        base, label = split_page(Path(row["filename"]).stem)
         # Folder is part of grouping identity. No punctuation/name normalization merges.
         key = row["folder"] + "/" + base
         automatic[key].append((label, row["path"]))
@@ -142,11 +138,11 @@ def discover(root, previous=None, overrides=None, generated_paths=()):
             if names[row["filename"].casefold()] > 1:
                 reasons.append(f"identical filename in different locations: {row['filename']}")
         stem = Path(paths[0]).stem
-        base = LABEL.sub(r"\1", stem)
-        match = HINT.fullmatch(base)
-        hints = dict(match.groupdict()) if match else {}
+        base, _ = split_page(stem)
+        parsed = filename_hints(base)
+        hints = dict(parsed)
         hints.update(folder=by_path[paths[0]]["folder"], filenames=[by_path[p]["filename"] for p in paths])
-        if not match and grouping != "reviewed":
+        if not parsed and grouping != "reviewed":
             reasons.append("filename cannot confidently identify a letter; review grouping")
         old = old_letters.get(lid)
         membership = [by_path[p]["image_id"] for p in paths]
@@ -157,8 +153,8 @@ def discover(root, previous=None, overrides=None, generated_paths=()):
         letters.append(dict(letter_id=lid, group_key=key, image_ids=membership, hints=hints,
                             grouping=grouping if not reasons or grouping == "reviewed" else "needs_review",
                             review_reasons=sorted(set(reasons)), override=override, active=True))
-        if match and any(by_path[p]["status"] != "missing" for p in paths):
-            hint_groups[tuple(match.groupdict().values())].append(letters[-1])
+        if parsed and any(by_path[p]["status"] != "missing" for p in paths):
+            hint_groups[tuple(parsed.items())].append(letters[-1])
     for same in hint_groups.values():
         if len(same) > 1:
             for letter in same:

@@ -1,7 +1,7 @@
 """Explicit byte-verified source path reconciliation; never rename a scan."""
 from copy import deepcopy
 from pathlib import Path
-from .discovery import HINT, LABEL
+from .naming import filename_hints, split_page
 from .publication import source_destination
 from .storage import digest
 
@@ -36,11 +36,10 @@ def reconcile_paths(inventory, mapping):
             continue
         pages = [by_id[i] for i in letter["image_ids"]]
         first = pages[0]
-        base = LABEL.sub(r"\1", Path(first["filename"]).stem)
+        base, _ = split_page(Path(first["filename"]).stem)
         if not letter.get("override"):
             letter["group_key"] = first["folder"] + "/" + base
-        hints = HINT.fullmatch(base)
-        letter["hints"] = dict(hints.groupdict()) if hints else {}
+        letter["hints"] = filename_hints(base)
         letter["hints"].update(folder=first["folder"], filenames=[p["filename"] for p in pages])
         if letter.get("override"):
             letter["override"]["paths"] = [paths.get(p, p) for p in letter["override"]["paths"]]

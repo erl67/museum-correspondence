@@ -13,6 +13,12 @@ Automatic group keys use exact folder plus filename stem without the final page 
 surname/date normalization is used for identity. The persistent store must move with its
 records; starting another store at another root creates another identity namespace.
 
+Current scan names follow `Sender-Recipient-YYYYMMDD_01.jpg`; see [naming.md](naming.md).
+Discovery also accepts legacy dashed dates and parenthesized labels. Page positions sort
+numerically. Optional `-a`/`-b` letter suffixes remain part of the exact group stem and
+appear as `letter_suffix` hints. Compact date hints are normalized to dashed dates at the
+same precision; `undated` gives a null date hint. Invalid calendar dates require review.
+
 - Correcting metadata does not change letter/image IDs.
 - A newly discovered page under the same group keeps the letter ID, gains an image ID,
   and holds grouping for review. A reviewed override confirms membership/order.
@@ -24,12 +30,15 @@ records; starting another store at another root creates another identity namespa
   `key` to create a new letter ID. Displaced groups become retired records. Original service
   responses remain attached to their original IDs and source manifests.
 - If staff independently rename/move a scan, automatic discovery treats the new path as a
-  new image, leaving the earlier one missing. Use a reviewed grouping override to retain the
-  letter ID; there is no automatic filename/hash identity merge or source rename operation.
+  new image, leaving the earlier one missing. Use an explicit byte-verified `reconcile-paths`
+  map before discovery to retain image/letter IDs and saved readings. Grouping changes need
+  reviewed overrides. There is no automatic filename/hash identity merge or routine source
+  rename operation.
 
 An inventory event contains `collection_id`, `input_root`, ordered `images`, `letters` and
-the exact applied `overrides`. Images contain ID, original path/filename/folder, SHA-256,
+the exact applied `overrides`. Images contain ID, current path/filename/folder, SHA-256,
 byte count, dimensions where readable, and ready/unsupported/unreadable/symlink/missing status.
+Reconciled images retain `previous_paths`; earlier inventory events retain all old fields.
 Letters contain ID, group key, ordered image IDs, provisional hints, grouping state, review
 reasons, override evidence and active/retired state.
 
@@ -110,7 +119,7 @@ fields remain newlines. No pipe/semicolon-separated relationship encoding is use
 | CSV | Row key/content |
 | --- | --- |
 | catalogue | one row per letter, including retired, blocked and failed |
-| images | letter ID + image ID + order; exact relative path and original filename |
+| images | letter ID + image ID + order; current relative path and filename |
 | evidence | one metadata quotation per row; letter, field, certainty, image, quote |
 | entities | one entity per row; evidence_json is a documented JSON array |
 | relationships | one directed typed link per row; evidence_json and contradictions_json are JSON arrays |

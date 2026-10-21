@@ -43,6 +43,12 @@ that hash before display. The mapping file is external to transcription identity
 never triggers a transcription request. Supply `--mapping` whenever regenerating the mapped
 viewer bundle. Ordinary exports without that option explicitly show missing mappings.
 
+The current naming convention is `Sender-Recipient-YYYYMMDD_01.jpg`. The viewer uses
+ordered scans and filenames from the export, so it needs no filename parser changes.
+Search accepts the compact date or full filename through current filename hints, as well
+as normalized dashed dates. Regenerate the export after path reconciliation; preserve
+image IDs and byte hashes, and verify the actual Drive IDs when maintaining the mapping.
+
 ## Installation and access
 
 1. Create a separate Apps Script project. Add Code.gs and an HTML file named **Viewer**.

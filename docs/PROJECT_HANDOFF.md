@@ -29,6 +29,59 @@ during this resumed work.
 
 ## Responsibilities
 
+### Authorized filename convention migration — 2026-10-21
+
+The user explicitly authorized renaming the Drive collection to
+`Sender-Recipient-YYYYMMDD_01.jpg`. All 44 JPEGs in `G:\My Drive\Correspondence` were
+renamed in place, with unchanged SHA-256 values. Explicit path reconciliation preserves
+21 active saved completed readings, all image/letter IDs, page membership/order, review
+states, prior journal bytes, original results and quota counters. Four grouping overrides
+and `local/drive-grouping.json` use current paths; recognized title dates are compact.
+
+`naming.py` now owns page-label parsing, date-hint normalization and compact report stems.
+Discovery, reconciliation and readable reports share it. Compact dates, partial dates,
+`undated`, and separate same-date letters (`-a`, `-b`) are supported alongside legacy names.
+Catalogue/schema dates remain dashed; no historical metadata is inferred from renaming.
+The tracked source fixtures remain unchanged for legacy compatibility coverage.
+
+Both current local export trees were refreshed, and 25 current Drive outputs were read
+back and verified. Publication archives obsolete owned reports as content-addressed blobs
+before removal, retaining ownership through interrupted cleanup. Twenty-two old Drive
+report paths were removed, including one earlier superseded placeholder. Local obsolete
+readable reports are backed up outside active exports. Current filenames appear in reports
+and viewer scans; historical provenance retains the names used for original requests.
+
+Recovery material and verification are under ignored `local/naming-migration-20261021/`;
+the operation script is `local/migrate_naming_20261021.py`. It checked all renamed scan
+hashes, saved text inclusion, future JPEG grouping, unchanged evidence/history and zero new
+attempts. Independent `analysis.txt`, historical `prompt.txt` and the PNG map were preserved.
+The Drive desktop mount was verified; cloud synchronization completion was not observed.
+No Gemini calls, sharing changes, viewer deployment, commit or push occurred.
+Offline verification: **110 Python and 19 viewer tests passed, no failures or skips**.
+See [naming.md](naming.md) for staff rules and recovery details.
+
+### Output cleanup and filename corrections — 2026-10-21
+
+Staff TXT reports no longer append the closing AI disclaimer. Existing local reports,
+including older generated filenames, were cleaned and the Drive reader copies refreshed.
+Current filename/reading conflict notes are recalculated from current hints; historical
+validation and request provenance remain unchanged in the saved results.
+
+The user-renamed July 4 scan was byte-verified and explicitly reconciled to February 4,
+1908, retaining the same image/letter IDs and saved February 4 reading. The user also
+approved reconciling the November 8, 1923 filename from Unknown to Sutton. This corrects
+filename references only; it does not change the saved sender metadata or approve the reading.
+Both generated report names and current catalogue/viewer references were refreshed. The
+already-renamed February TXT was checked against its recorded generated content before adoption.
+Obsolete local report names were archived under ignored `local/`; old Drive report paths
+are absent. All 26 managed Drive outputs were read back and their ownership hashes verified.
+
+All 44 scan paths/bytes present at the start were preserved, along with 21 completed saved
+readings, the earlier journal prefix, original results and quota counters. No Gemini calls,
+sharing changes, deployment, commit or push occurred. Offline verification: **101 Python
+and 18 viewer tests passed, no failures or skips**. Recoverable snapshots and verification
+summaries are in ignored `local/output-repair-20261021` and `local/sutton-output-repair-20261021`.
+
 ### Drive reading/export update — 2026-10-20
 
 The requested daily allocation is now **100 attempts**, still 2 starts/minute. The ignored
@@ -62,6 +115,7 @@ Offline verification: **100 Python and 18 viewer tests passed, no failures or sk
 
 | Module | Responsibility |
 | --- | --- |
+| naming | Current/legacy page labels, date-hint formatting and compact report stems |
 | discovery | Recursive JPEG inventory, integrity, conservative folder-scoped grouping, persistent IDs, overrides and missing/retired history |
 | prompt / schema | Historical reading policy, metadata evidence/uncertainty, JSON/page validation and defensible date intervals |
 | images | In-memory JPEG preparation, original/submitted hashes, whole-letter payload check, immutable complete request context/fingerprint |

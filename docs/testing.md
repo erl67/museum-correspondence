@@ -9,8 +9,8 @@ node --test apps_script/viewer/test_viewer.cjs
 git diff --check
 ```
 
-Recorded on **2026-10-20**, Windows, Python **3.14.2**, Node **24.19.0**:
-**100 Python tests passed, 0 failed, 0 skipped; 18 viewer tests passed, 0 failed,
+Recorded on **2026-10-21**, Windows, Python **3.14.2**, Node **24.19.0**:
+**110 Python tests passed, 0 failed, 0 skipped; 19 viewer tests passed, 0 failed,
 0 skipped.** Pinned runtime dependencies were installed in this repository's `.venv`:
 google-genai 2.23.0, Pillow 12.3.0, tzdata 2026.3. The SDK emits a Python 3.14
 `_UnionGenericAlias` deprecation warning; it does not fail the suite.
@@ -30,6 +30,11 @@ paths, selecting older eligible cache revisions for exports, and approval invali
 
 ## Coverage
 
+- Compact full/partial filename dates, `undated`, calendar validation, numeric page order
+  through page 11, missing/zero/duplicate positions, same-date `-a`/`-b` letters, readable
+  report names, legacy compatibility and migration preserving completed readings/history.
+- Superseded managed reports are archived before removal; edited obsolete reports stop
+  publication and interrupted cleanup can be retried.
 - Current 25-file inventory under singular `test/inputs`, eight numeric-page groups, original
   six SHA-256 values, and replay of their former two/four-image A–B/A–D grouping.
 - Folder/name collisions, duplicate/mixed labels, missing pages, ambiguous filenames,
@@ -53,13 +58,15 @@ paths, selecting older eligible cache revisions for exports, and approval invali
   exclusions, protection of unowned/edited text and source paths, interrupted publication
   recovery, name collisions, current/absent/stale readings and pending-only continuation.
 - Explicit byte-verified external filename reconciliation, preserved IDs/results/journal
-  history, and rejection of changed bytes, path escapes and duplicate targets.
+  history, current filename-conflict notes after date corrections, and rejection of changed
+  bytes, path escapes and duplicate targets.
 - Synthetic strong reply evidence, ambiguous alternatives, misleading shared topics,
   unavailable references, chronology conflicts, mentions/enclosures, branching, cycles,
   explicit confirmations/rejections and metadata-driven rematching.
 - Apps Script server functions and actual client script: literal escaped historical text,
   ordered scans, authorization on every RPC, missing/inaccessible/changed/oversized images,
-  explicit relationship/review labels, unresolved references and absent transcriptions.
+  explicit relationship/review labels, unresolved references and absent transcriptions;
+  compact-date/full-filename search and displayed current scan names in exported order.
 
 All temporary fixtures live under ignored `local/test-tmp` and are cleaned up by unittest.
 No optional skips hide missing SDK coverage: install requirements before running.

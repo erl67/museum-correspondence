@@ -1,5 +1,6 @@
 from copy import deepcopy
 from io import StringIO
+from pathlib import Path
 from unittest.mock import patch
 from correspondence.cli import main
 from correspondence.discovery import discover
@@ -27,7 +28,7 @@ class PublicationTests(Workspace):
         export_all(self.store, self.inventory, self.output)
 
     def test_reading_has_ordered_text_before_metadata_without_json(self):
-        text = (self.output / "readable/Correspondent/A-B-1899-05-02.txt").read_text(encoding="utf-8")
+        text = (self.output / "readable/Correspondent/A-B-18990502.txt").read_text(encoding="utf-8")
         self.assertLess(text.index("Dear B,"), text.index("Second page."))
         self.assertLess(text.index("Second page."), text.index("CATALOGUE DETAILS"))
         self.assertIn("Café", text)
@@ -39,7 +40,7 @@ class PublicationTests(Workspace):
         with patch("correspondence.provider.Gemini.send", side_effect=AssertionError("network forbidden")):
             publish_text(self.store, self.inventory, self.output)
             publish_text(self.store, self.inventory, self.output)
-        for relative in ("Correspondent/A-B-1899-05-02.txt", "Correspondent/Correspondent_transcriptions.txt",
+        for relative in ("Correspondent/A-B-18990502.txt", "Correspondent/Correspondent_transcriptions.txt",
                          "Correspondence_transcriptions.txt", "Correspondence_viewer.json"):
             self.assertTrue((self.inputs / relative).is_file())
         (self.inputs / "staff-notes.txt").write_text("Independent staff notes")
@@ -49,16 +50,51 @@ class PublicationTests(Workspace):
         self.assertEqual(before, {p: p.read_bytes() for p in self.inputs.rglob("*.jpg")})
 
     def test_unowned_existing_text_is_not_overwritten(self):
-        destination = self.inputs / "Correspondent/A-B-1899-05-02.txt"
+        destination = self.inputs / "Correspondent/A-B-18990502.txt"
         destination.write_text("Staff reading", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "unowned or edited"):
             publish_text(self.store, self.inventory, self.output)
         self.assertEqual(destination.read_text(), "Staff reading")
         self.assertFalse((self.inputs / "Correspondence_transcriptions.txt").exists())
 
+    def test_obsolete_reports_are_archived_and_removed_with_retry(self):
+        from correspondence.storage import digest
+        publish_text(self.store, self.inventory, self.output)
+        old = self.inputs / "Correspondent/A-B-18990502.txt"
+        original = old.read_bytes()
+        updated = deepcopy(self.inventory)
+        updated['letters'][0]['override'] = {'title': 'New report title'}
+        export_all(self.store, updated, self.output)
+        unlink = Path.unlink
+        def interrupted(path, *args, **kwargs):
+            if path == old:
+                raise OSError('interrupted cleanup')
+            return unlink(path, *args, **kwargs)
+        with patch('pathlib.Path.unlink', interrupted):
+            with self.assertRaises(OSError):
+                publish_text(self.store, updated, self.output)
+        self.assertTrue((self.inputs / 'Correspondent/New report title.txt').exists())
+        self.assertEqual(self.store.latest('text_publication')['status'], 'pending')
+        publish_text(self.store, updated, self.output)
+        self.assertFalse(old.exists())
+        self.assertTrue((self.inputs / 'Correspondent/New report title.txt').exists())
+        self.assertEqual((self.store.root / 'blobs' / (digest(original) + '.txt')).read_bytes(), original)
+        self.assertNotIn('Correspondent/A-B-18990502.txt', self.store.latest('text_publication')['files'])
+
+    def test_edited_obsolete_report_blocks_publication(self):
+        publish_text(self.store, self.inventory, self.output)
+        old = self.inputs / 'Correspondent/A-B-18990502.txt'
+        old.write_text('Staff edits', encoding='utf-8')
+        updated = deepcopy(self.inventory)
+        updated['letters'][0]['override'] = {'title': 'New report title'}
+        with self.assertRaisesRegex(ValueError, 'edited'):
+            publish_text(self.store, updated, self.output)
+        self.assertFalse((self.inputs / 'Correspondent/New report title.txt').exists())
+        self.assertEqual(old.read_text(encoding='utf-8'), 'Staff edits')
+
     def test_edited_published_text_is_not_overwritten(self):
         publish_text(self.store, self.inventory, self.output)
-        destination = self.inputs / "Correspondent/A-B-1899-05-02.txt"
+        destination = self.inputs / "Correspondent/A-B-18990502.txt"
         destination.write_text("Staff correction", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "unowned or edited"):
             publish_text(self.store, self.inventory, self.output)
@@ -85,7 +121,7 @@ class PublicationTests(Workspace):
             with self.assertRaises(ValueError):
                 source_destination(self.inputs, relative)
         inv = deepcopy(self.inventory)
-        inv["images"].append(dict(path="Correspondent/A-B-1899-05-02.txt", image_id="extra"))
+        inv["images"].append(dict(path="Correspondent/A-B-18990502.txt", image_id="extra"))
         with self.assertRaisesRegex(ValueError, "inventoried source"):
             publish_text(self.store, inv, self.output)
 
@@ -96,7 +132,7 @@ class PublicationTests(Workspace):
         records.append(other)
         paths = text_paths(records, {i["image_id"]: i for i in self.inventory["images"]})
         self.assertEqual(len(set(paths.values())), 2)
-        self.assertTrue(all("A-B-1899-05-02" in p.name for p in paths.values()))
+        self.assertTrue(all("A-B-18990502" in p.name for p in paths.values()))
 
     def test_unprocessed_and_stale_text_are_labelled(self):
         record = current_records(self.store, self.inventory)[0]
@@ -148,6 +184,34 @@ class RelocationTests(Workspace):
         jpeg(self.inputs / "New-B-1899(1).jpg", "blue")
         with self.assertRaisesRegex(ValueError, "bytes differ"):
             reconcile_paths(self.inventory, self.mapping)
+
+    def test_corrected_filename_clears_only_resolved_current_conflicts(self):
+        for old, new in list(self.mapping["paths"].items()):
+            corrected = new.replace("1899", "1900")
+            (self.inputs / new).rename(self.inputs / corrected)
+            self.mapping["paths"][old] = corrected
+        self.doc["pages"][0]["text"] = "SYNTHETIC FIXTURE. May 2, 1900. Dear Other."
+        evidence = [dict(image_id=self.letter["image_ids"][0], quote="May 2, 1900")]
+        self.doc["metadata"]["date"].update(value="May 2, 1900", normalized="1900",
+                                             precision="year", certainty="explicit", evidence=evidence)
+        self.doc["metadata"]["recipient"].update(value="Other", normalized="Other",
+                                                  certainty="explicit", evidence=evidence)
+        clock = Clock()
+        transcribe(self.store, self.letter, self.request, self.config,
+                   lambda: FakeTransport([response(self.doc)]), quota=Quota(self.config, clock.time, clock.sleep))
+        original = deepcopy(self.store.results()[0])
+        self.assertTrue(any(r.startswith("filename/document conflict: date:") for r in original["review_reasons"]))
+        updated = reconcile_paths(self.inventory, self.mapping)
+        self.store.append("inventory", updated)
+        output = self.root / "exports"
+        export_all(self.store, updated, output)
+        record = current_records(self.store, updated)[0]
+        self.assertFalse(any(r.startswith("filename/document conflict: date:") for r in record["review_reasons"]))
+        self.assertTrue(any(r.startswith("filename/document conflict: recipient:") for r in record["review_reasons"]))
+        self.assertNotIn("filename/document conflict: date:", (output / "combined.txt").read_text(encoding="utf-8"))
+        self.assertEqual(record["execution"], "complete")
+        self.assertEqual(record["document"], original["document"])
+        self.assertEqual(self.store.results()[0], original)
 
     def test_existing_old_path_duplicate_target_and_escape_rejected(self):
         invalid = deepcopy(self.mapping)

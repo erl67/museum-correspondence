@@ -26,7 +26,9 @@ unreadable/missing scan transcribable. Discovery warnings remain visible. Review
 adding pages: the previous override does not silently acquire new pages.
 
 An optional `title` supplies a readable report filename without changing scan names or
-historical metadata. Otherwise the name comes from the first scan with page suffixes removed.
+historical metadata. Recognized letter titles use compact dates; custom descriptive titles
+are preserved. Otherwise the name comes from the first scan with its page suffix removed.
+Use [the current naming convention](naming.md) in new path lists. Legacy paths remain supported.
 
 ## Reconcile filenames changed outside the application
 
@@ -36,9 +38,9 @@ explicit local map rather than silently matching and merging records by hash:
 ```json
 {
   "version": 1,
-  "source": "Staff corrected the filename spelling; same original image",
+  "source": "Staff authorized compact-date naming; same original image and page position",
   "paths": {
-    "Folder/OldName(1).jpg": "Folder/CorrectName(1).jpg"
+    "Folder/Shufeldt,P-Todd-1899-08-07(1).jpg": "Folder/Shufeldt,P-Todd-18990807_01.jpg"
   }
 }
 ```
@@ -50,10 +52,16 @@ explicit local map rather than silently matching and merging records by hash:
 The old path must be absent, the new JPEG must exist within the same input root, and its
 SHA-256 must equal the saved original. The command appends a new inventory, preserving image
 and letter IDs, earlier paths/responses, and review history. It never moves or edits a scan.
+Current reports use the corrected filenames and recheck filename/reading conflicts against
+the current hints. Historical request provenance and validation remain in the saved history.
 Then refresh `inventory` with any needed grouping overrides. Correcting page membership
 still requires explicit grouping review; a filename map does not approve a transcription.
 Root-folder relocation is not supported by this command. Use `--pending` when continuing
 to avoid re-requesting completed readings after filename changes.
+Update any local grouping override file to the reconciled paths before supplying it again.
+Then run `export` with the existing store and output directory to refresh current reports.
+Original request provenance retains the old names as historical evidence; current scan
+references use the new paths. See [the naming guide](naming.md) for output cleanup and recovery.
 
 ## Correct a reading or metadata
 

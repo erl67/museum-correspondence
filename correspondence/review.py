@@ -55,6 +55,13 @@ def current_records(store, inventory):
                     record[field] = correction[field]
         if record["stale_reviews"]:
             record["review_reasons"].append("Earlier human corrections need rebasing; preserved in review history")
+        if record["document"]:
+            # Filename hints can change after an explicit path reconciliation. Keep
+            # historical validation in the saved result; display current conflicts.
+            prefix = "filename/document conflict: "
+            _, reasons = validate_document(record["document"], record["image_ids"], record["hints"])
+            record["review_reasons"] = [r for r in record["review_reasons"] if not r.startswith(prefix)]
+            record["review_reasons"] += [r for r in reasons if r.startswith(prefix)]
         records.append(record)
     return records
 

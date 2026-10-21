@@ -17,7 +17,9 @@ Set-Location "C:\Users\x5769\Documents\GitHub\museum-correspondence"
 
 Make sure Google Drive for desktop is running and you can open the scans in File Explorer
 under `G:\My Drive\Correspondence`. Let Drive finish downloading them if necessary.
-Leave the original scans and their names unchanged.
+Name new scans using [the naming guide](naming.md), for example
+`Shufeldt,P-Todd-18990807_01.jpg`. Existing inventoried scans require an explicitly
+authorized, byte-verified migration and path reconciliation before changing their names.
 
 ## 2. Check the installation
 
@@ -123,10 +125,10 @@ G:\My Drive\Correspondence
 - `Shufeldt, Percy\Shufeldt, Percy_transcriptions.txt`: the Percy folder's letters together.
 - `Shufeldt, RW\Shufeldt, RW_transcriptions.txt`: the RW folder's letters together.
 - Each scan folder also has individual letter reports, such as
-  `Shufeldt, Percy\Shufeldt,P-Todd-1899-04-18.txt`, with all pages of that letter in order.
+  `Shufeldt, Percy\Shufeldt,P-Todd-18990418.txt`, with all pages of that letter in order.
 - `Correspondence_viewer.json`: a machine-readable copy for the web viewer, not a staff report.
 
-Names normally match the first scan without its page suffix. Grouping overrides can supply
+Names use the compact-date letter stem without its page suffix. Grouping overrides can supply
 an explicit readable `title`; collisions get distinct suffixes so no letter overwrites another.
 Failed or unprocessed letters also have clearly labelled status reports, so the presence of
 a `.txt` file alone does not mean transcription succeeded.
@@ -136,6 +138,8 @@ export commands refresh them automatically. Drive for desktop handles syncing; t
 does not change sharing. Existing scans, unrelated files and staff-edited reports are protected.
 Only the exact generated paths recorded by this store are excluded from later scan discovery.
 If publication says a report was edited, preserve your version before regenerating it.
+Superseded managed reports are backed up into the local store and removed from Drive;
+their old names are not recreated as placeholder reports.
 
 Local copies remain under `local/full-exports`: `readable` has the named staff reports,
 `combined.txt` has all active letters, and `catalogue.csv` is the index. The older
@@ -161,9 +165,11 @@ saving the TXT files alone does not configure it. See [viewer setup](../apps_scr
 If scans were renamed after inventory, use the [explicit filename reconciliation workflow](review.md#reconcile-filenames-changed-outside-the-application)
 to preserve the saved readings and IDs, followed by inventory and any grouping overrides.
 Do not create a replacement store or re-transcribe every letter just to fix filenames.
-The current Drive collection has been reconciled with the user's corrected filenames;
-the previously split August 7 pages and December 9 Sutton pages are grouped in numeric order.
-Source files have not been renamed by this application.
+On 2026-10-21 the user authorized migration of all 44 Drive scans to compact dates and
+`_01` page suffixes. The existing 21 saved readings, archival IDs and scan bytes were
+preserved. Active grouping overrides and all current application outputs were refreshed;
+the August 7 pages and December 9 Sutton pages retain their established numeric order.
+See [migration records and recovery](naming.md#2026-10-21-drive-migration).
 
 ## Renaming the Drive folder
 

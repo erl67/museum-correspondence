@@ -4,7 +4,8 @@ This application inventories scanned historical letters, prepares page-linked tr
 and builds a searchable local catalogue. Letters may be filed under different correspondents;
 local relationship matching searches the whole saved collection.
 
-Original scans are never renamed, moved, corrected, or overwritten. Filename names and dates
+Routine commands leave source scans unchanged. An explicitly authorized naming migration
+can rename files with byte verification and identity reconciliation. Filename names and dates
 are provisional hints. The document reading, normalized search values, and staff corrections
 remain separate. **A complete service response is not a verified historical transcription.**
 
@@ -14,6 +15,19 @@ in two correspondent folders, forming eight provisional letters with 2, 4, 2, 4,
 and 1 ordered pages. The original six scans remain byte-identical after their external move
 into `Shufeldt, Percy` and relabelling from A–D to numeric page suffixes. These are source
 fixtures, not verified reference transcriptions, and do not establish confirmed reply links.
+
+## Scan filenames
+
+Use `Sender-Recipient-YYYYMMDD_01.jpg`, for example
+`Shufeldt,P-Todd-18990807_01.jpg`. Number every scan, including single-page letters,
+with at least two digits. Keep the same letter stem and increase `_01`, `_02`, etc.
+Use `YYYYMM`, `YYYY`, or `undated` when the date is incomplete; use `-a`, `-b`
+before the page suffix for separate letters with the same sender, recipient and date.
+See the [naming guide](docs/naming.md) for examples and migration safeguards.
+
+The Drive collection was migrated on 2026-10-21: 44 scans, 21 saved readings and 25
+current Drive outputs. Legacy filenames remain supported, including the unchanged
+tracked test scans. Individual TXT reports use the compact date and omit the page suffix.
 
 ## Install on Windows
 
@@ -99,11 +113,11 @@ Default outputs:
 
 | File | Use |
 | --- | --- |
-| `local/exports/readable/<source folder>/<letter filename>.txt` | Staff report: actual letter text first, ordered pages, annotations and separate plain-English notes; no JSON sections |
+| `local/exports/readable/<source folder>/<letter filename>.txt` | Staff report: ordered letter text, annotations, separate plain-English notes and review status; no closing AI disclaimer or JSON sections |
 | `local/exports/combined.txt` | All active letter readings in one text file |
 | `local/exports/letters/ltr_….txt` | Detailed diagnostic report with archival IDs, JSON evidence and technical provenance |
 | `local/exports/catalogue.csv` | One row per letter, including blocked/unprocessed/failed/retired records |
-| `images.csv`, `evidence.csv`, `entities.csv` | Related tables with stable IDs; original paths, evidence, and identifiers |
+| `images.csv`, `evidence.csv`, `entities.csv` | Related tables with stable IDs; current scan paths, evidence, and identifiers |
 | `relationships.csv`, `unresolved.csv` | Proposed/confirmed/rejected links and references to unidentified letters |
 | `records.json`, `viewer.json` | Structured export and viewer bundle |
 | `local/collection/journal.jsonl`, `blobs/` | Durable history, original responses, request context and submitted image bytes; back these up |
@@ -126,6 +140,8 @@ staff read the text files. Later `inventory`, `transcribe` and `export` commands
 store refresh these copies automatically. Drive for desktop syncs these generated files.
 Unowned files, edited reports and scans are never overwritten. Only exact managed output
 paths are excluded from later scan discovery. See the [Drive guide](docs/drive-transcription.md).
+Superseded managed Drive reports are archived in the local store before removal; edited
+reports block replacement or removal. Earlier paths remain in historical provenance.
 
 ```powershell
 .\.venv\Scripts\python.exe -m correspondence show --letter "LETTER_ID_FROM_INVENTORY"

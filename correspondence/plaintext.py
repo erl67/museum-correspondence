@@ -2,6 +2,7 @@
 from collections import Counter
 from pathlib import PurePosixPath
 import re
+from .naming import canonical_stem, split_page
 
 
 def safe_name(value):
@@ -18,8 +19,8 @@ def title(record, images):
     name = (record.get("override") or {}).get("title")
     if not name:
         name = PurePosixPath(images[record["image_ids"][0]]["path"]).stem
-        name = re.sub(r"(?:\s*\((?:[A-Za-z]+|\d+)\))+$", "", name)
-    return safe_name(name)
+        name, _ = split_page(name)
+    return safe_name(canonical_stem(name))
 
 
 def text_paths(records, images):
@@ -74,6 +75,5 @@ def reading(record, images):
             lines += ["A failed/partial response is preserved in the local diagnostic report and history."]
     if record["review_reasons"]:
         lines += ["", "REVIEW NOTES"] + ["- " + r for r in record["review_reasons"]]
-    lines += ["", "Record: " + record["letter_id"],
-              "A complete AI response is not a human-verified transcription."]
+    lines += ["", "Record: " + record["letter_id"]]
     return "\n".join(lines) + "\n"

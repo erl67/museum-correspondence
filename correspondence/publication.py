@@ -59,8 +59,7 @@ def publish_text(store, inventory, output):
     add("Correspondence_viewer.json", (Path(output) / "viewer.json").read_bytes())
     state = publication_state(store, inventory)
     owned = state.get("files", {})
-    for old in owned.keys() - files.keys():
-        add(old, "SUPERSEDED GENERATED REPORT\nSee Correspondence_transcriptions.txt for current letters.\n")
+    retired = owned.keys() - files.keys()
     sources = {i["path"].casefold() for i in inventory["images"]}
     pending = {}
     # Preflight the complete set before changing any file.
@@ -73,13 +72,31 @@ def publish_text(store, inventory, output):
         if path.exists() and (not path.is_file() or digest(path.read_bytes()) not in prior):
             raise ValueError(f"Refusing to overwrite an unowned or edited file: {relative}")
         pending[relative] = sorted(set(prior + [new_hash]))
-    store.append("text_publication", dict(input_root=inventory["input_root"], files=pending, status="pending"))
+    archived = {}
+    for relative in sorted(retired):
+        path = source_destination(root, relative)
+        if relative.casefold() in sources or path.suffix.lower() not in {".txt", ".json"}:
+            raise ValueError(f"Refusing to retire an inventoried source: {relative}")
+        if path.exists():
+            if not path.is_file() or digest(path.read_bytes()) not in owned[relative]:
+                raise ValueError(f"Refusing to retire an unowned or edited file: {relative}")
+            archived[relative] = store.blob(path.read_bytes(), path.suffix)
+        pending[relative] = owned[relative]
+    # Keep retiring paths owned until completion, so interruption can be retried safely.
+    store.append("text_publication", dict(input_root=inventory["input_root"], files=pending,
+                 archived=archived, status="pending"))
     for relative, content in files.items():
         path = source_destination(root, relative)
         # Recheck against edits made after preflight, before each replacement.
         if path.exists() and digest(path.read_bytes()) not in owned.get(relative, []):
             raise ValueError(f"File changed during publication: {relative}")
         atomic_bytes(path, content)
+    for relative in sorted(retired):
+        path = source_destination(root, relative)
+        if path.exists():
+            if digest(path.read_bytes()) not in owned[relative]:
+                raise ValueError(f"File changed during publication: {relative}")
+            path.unlink()
     store.append("text_publication", dict(input_root=inventory["input_root"],
                  files={p: [digest(b)] for p, b in files.items()}, status="complete"))
     return len(files)
