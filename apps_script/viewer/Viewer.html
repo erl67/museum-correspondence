@@ -3,39 +3,118 @@
 <head>
   <base target="_top">
   <style>
-    :root { color-scheme: light; font-family: system-ui, sans-serif; color: #222d31; background: #f5f3ed; }
-    body { max-width: 1500px; margin: auto; padding: 24px; }
-    h1 { font-family: Georgia, serif; font-weight: normal; margin-bottom: 8px; }
-    button, input { font: inherit; padding: 10px; }
-    input { min-width: 220px; width: min(65%, 600px); }
-    a { color: #205c64; }
-    .muted { color: #526267; }
-    .notice { padding: 12px; background: #fff2d2; border-left: 3px solid #987625; }
-    .reader { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
-    .panel { background: white; padding: 22px; border: 1px solid #dddcd4; margin-top: 16px; min-width: 0; }
-    pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 1rem/1.65 Georgia, serif; }
-    img { max-width: 100%; height: auto; }
-    figure { margin: 0 0 24px; }
-    figcaption { font-size: .85rem; overflow-wrap: anywhere; margin: 8px 0; }
-    details pre { font: .8rem/1.5 monospace; }
-    li { margin: 8px 0; overflow-wrap: anywhere; }
-    @media (max-width: 850px) { body { padding: 12px; } .reader { grid-template-columns: 1fr; } }
+    :root { color-scheme: light; font-family: system-ui, sans-serif; color: #283b3a; background: #f5f3ed; }
+    * { box-sizing: border-box; }
+    body { max-width: 1520px; margin: auto; padding: 32px 40px 56px; }
+    [hidden] { display: none !important; }
+    h1, h2 { font-family: Georgia, serif; font-weight: normal; }
+    h1 { font-size: 2rem; margin: 0 0 8px; }
+    h2 { font-size: clamp(1.6rem, 3vw, 2.5rem); margin: 12px 0; overflow-wrap: anywhere; }
+    h3 { font-size: 1.15rem; }
+    a { color: #225e58; text-underline-offset: 3px; }
+    button, input { font: inherit; }
+    button, .button { padding: 10px 16px; border: 1px solid #c5cec7; border-radius: 6px; background: #fffdf8;
+      color: #225e58; text-decoration: none; display: inline-block; cursor: pointer; }
+    button:hover, .button:hover { background: #e8eee7; }
+    :focus-visible { outline: 3px solid #367a73; outline-offset: 4px; }
+    .button.disabled { color: #747d78; background: transparent; cursor: default; }
+    .site-header { padding-bottom: 24px; border-bottom: 1px solid #d8dcd2; margin-bottom: 28px; }
+    .site-header a { color: inherit; text-decoration: none; }
+    .muted, .field-note { color: #5d6b65; }
+    .eyebrow, .column-label { font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
+    .eyebrow { color: #61726a; margin: 0; }
+    .intro { max-width: 760px; line-height: 1.6; }
+    #search { margin: 22px 0 28px; }
+    #search label { display: block; margin-bottom: 8px; font-size: .9rem; }
+    .search-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+    input { min-width: 0; width: min(100%, 540px); padding: 12px; border: 1px solid #bcc7bd; border-radius: 6px; background: #fffdf8; }
+    #message:empty, #initial-error:empty { display: none; }
+    #message { color: #5d6b65; }
+    .folder { margin: 14px 0; border: 1px solid #d8ddd3; border-radius: 8px; background: #fffdf8; }
+    .folder > summary { cursor: pointer; padding: 20px 24px; font-size: 1.12rem; overflow-wrap: anywhere; }
+    .folder > summary::marker { color: #37675b; }
+    .folder-count { font-size: .85rem; color: #61726a; margin-left: 14px; }
+    .folder-help { margin: 0; padding: 0 24px 16px; font-size: .85rem; line-height: 1.5; color: #61726a; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 15px 24px; border-top: 1px solid #e4e7df; vertical-align: top; overflow-wrap: anywhere; }
+    th { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: #61726a; background: #f5f6f0; }
+    td { font-size: .94rem; line-height: 1.5; }
+    tbody tr:hover { background: #f5f7f1; }
+    .field-note { display: block; font-size: .78rem; margin-top: 4px; }
+    .letter-nav { display: flex; gap: 12px; justify-content: space-between; align-items: center; flex-wrap: wrap; margin: 24px 0; }
+    .nav-position { font-size: .85rem; color: #61726a; }
+    .nav-steps { display: flex; gap: 8px; }
+    .letter-heading { margin: 32px 0 20px; }
+    .letter-summary { max-width: 980px; font: 1.15rem/1.7 Georgia, serif; }
+    .letter-summary h3 { font: 600 .78rem system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #61726a; }
+    .page-pair { margin: 36px 0 48px; --page-ratio: 3 / 4; }
+    .page-pair > h3 { padding-bottom: 12px; border-bottom: 1px solid #d8dcd2; }
+    .page-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+    .page-column { min-width: 0; }
+    .column-label { color: #61726a; margin: 0 0 12px; }
+    figure { margin: 0; }
+    .page-sheet { width: 100%; aspect-ratio: var(--page-ratio); min-height: 0; }
+    .scan-sheet { position: relative; background: #e9e8e0; border-radius: 3px; overflow: hidden; }
+    .scan-sheet img { position: absolute; width: 100%; height: 100%; object-fit: contain; display: block; }
+    .scan-message { position: absolute; inset: 24px; margin: 0; line-height: 1.6; overflow: auto; }
+    .transcript-sheet { background: #fffdf7; padding: clamp(20px, 3vw, 44px); overflow: auto;
+      border-radius: 3px; box-shadow: inset 3px 0 #d9e1d3, 0 2px 12px #283b3a06; scrollbar-gutter: stable; }
+    .transcript-sheet pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 1.05rem/1.8 Georgia, serif; margin: 0; }
+    .transcript-sheet h4 { font-size: .85rem; font-weight: 600; margin: 24px 0 10px; }
+    .transcript-sheet .page-status { margin-top: 0; font-size: .8rem; color: #61726a; }
+    figcaption { font-size: .8rem; line-height: 1.5; color: #61726a; overflow-wrap: anywhere; margin-top: 12px; }
+    figcaption a { display: block; margin-top: 6px; }
+    .reading-help { font-size: .85rem; color: #61726a; }
+    .panel { margin-top: 28px; padding: 26px; background: #fffdf8; border-radius: 6px; overflow-wrap: anywhere; }
+    .panel h3:first-child { margin-top: 0; }
+    .metadata-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-bottom: 0; }
+    dt { color: #61726a; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    dd { margin: 0; line-height: 1.5; white-space: pre-wrap; }
+    pre, .preserve { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; }
+    .notice { padding: 14px 18px; background: #f1ead6; border-left: 3px solid #a78d4f; line-height: 1.6; }
+    .provenance { margin-top: 24px; }
+    .provenance summary { cursor: pointer; padding: 12px 0; }
+    .provenance pre { font: .8rem/1.6 monospace; }
+    @media (max-width: 760px) {
+      body { padding: 20px 16px 36px; }
+      .page-columns, .metadata-grid { grid-template-columns: 1fr; }
+      .page-columns { gap: 20px; }
+      .transcript-sheet { aspect-ratio: auto; overflow: visible; }
+      .folder > summary { padding: 18px 16px; }
+      th, td { padding: 12px 16px; min-width: 130px; }
+      .nav-position { width: 100%; order: 3; }
+      .panel { padding: 20px; }
+    }
   </style>
 </head>
-<body data-letter="<?= letterId ?>" data-url="<?= appUrl ?>">
-  <h1>Museum correspondence</h1>
-  <p class="muted">Historical letters, source scans, and reviewed connections</p>
+<body data-letter="<?= letterId ?>" data-folder="<?= folder ?>" data-url="<?= appUrl ?>">
+  <header class="site-header">
+    <h1><a href="<?= appUrl ?>">Museum correspondence</a></h1>
+    <p class="muted">Letters from the collection</p>
+  </header>
   <p id="initial-error" role="alert"><?= error ?></p>
-  <form id="search"><label for="query">Search correspondent, date, or saved text</label><br>
-    <input id="query" maxlength="200"><button type="submit">Search</button></form>
-  <p id="message" role="status"></p>
-  <nav id="results" aria-label="Search results"></nav>
-  <main id="record"></main>
+  <p id="message" role="status" aria-live="polite"></p>
+  <main>
+    <section id="catalogue" hidden>
+      <p class="eyebrow">Browse the archive</p>
+      <h2>Letter folders</h2>
+      <p class="intro muted">Expand a folder to browse its letters in chronological order. Select a letter to read its summary, original pages, and transcription.</p>
+      <form id="search">
+        <label for="query">Search folders, senders, recipients, dates, or saved text</label>
+        <div class="search-controls"><input id="query" type="search" maxlength="200" placeholder="Search the collection…">
+          <button type="submit">Search</button><button id="clear-search" type="button">Show all</button></div>
+      </form>
+      <div id="results"></div>
+    </section>
+    <article id="record" hidden></article>
+  </main>
   <script>
     'use strict';
-    function element(tag, text, parent) {
+    function element(tag, text, parent, className) {
       const node = document.createElement(tag);
       if (text !== undefined && text !== null) node.textContent = String(text);
+      if (className) node.className = className;
       if (parent) parent.appendChild(node);
       return node;
     }
@@ -45,7 +124,73 @@
       return a;
     }
     function value(meta, name) {
-      return (meta[name] && (meta[name].value || meta[name].normalized)) || 'Unknown';
+      const field = (meta || {})[name];
+      return (field && (field.value || field.normalized)) || 'Unknown';
+    }
+    function folderLabel(name) { return name === '.' ? 'Collection root' : name; }
+    function displayField(parent, letter, name) {
+      const field = (letter.metadata || {})[name] || {};
+      if (field.value || field.normalized) {
+        element('span', value(letter.metadata, name), parent);
+        if (field.certainty && field.certainty !== 'explicit') element('span', field.certainty, parent, 'field-note');
+      } else if (letter.hints && letter.hints[name]) {
+        element('span', letter.hints[name], parent);
+        element('span', 'Filename hint · unverified', parent, 'field-note');
+      } else element('span', name === 'date' ? 'Undated' : 'Unknown', parent);
+      if (name === 'date' && letter.sort_basis === 'unknown') element('span', 'Not placed in chronology', parent, 'field-note');
+    }
+    function renderFolders(result, searching) {
+      const root = document.getElementById('results'); root.replaceChildren();
+      document.getElementById('message').textContent = result.total + ' letter(s) in ' + result.folders.length + ' folder(s)';
+      if (!result.folders.length) element('p', searching ? 'No letters match this search.' : 'No letters are available in this export.', root);
+      for (const folder of result.folders) {
+        const details = element('details', null, root, 'folder');
+        details.open = Boolean(searching || document.body.dataset.folder === folder.name);
+        const heading = element('summary', folderLabel(folder.name), details);
+        element('span', folder.letters.length + ' letter(s)', heading, 'folder-count');
+        element('p', 'Oldest first. Partial dates keep their recorded precision; filename dates are marked as hints. Uncertain or undated letters follow dated letters.', details, 'folder-help');
+        const wrap = element('div', null, details, 'table-wrap');
+        const table = element('table', null, wrap);
+        table.setAttribute('aria-label', 'Letters in ' + folderLabel(folder.name));
+        const header = element('tr', null, element('thead', null, table));
+        for (const label of ['Date', 'Sender', 'Recipient', 'Reading']) element('th', label, header).scope = 'col';
+        const body = element('tbody', null, table);
+        for (const letter of folder.letters) {
+          const row = element('tr', null, body);
+          for (const name of ['date', 'sender', 'recipient']) displayField(element('td', null, row), letter, name);
+          const reading = element('td', null, row);
+          const a = linkTo(letter.letter_id, 'Read letter →', reading);
+          a.setAttribute('aria-label', 'Read letter: ' + value(letter.metadata, 'sender') + ' to ' +
+            value(letter.metadata, 'recipient') + ', ' + value(letter.metadata, 'date') + ', ' + letter.letter_id);
+          element('span', letter.page_count + ' page(s) · ' + letter.execution, reading, 'field-note');
+          if (letter.active === false) element('span', 'Retired record', reading, 'field-note');
+        }
+      }
+    }
+    let catalogueRequest = 0;
+    function loadFolders(query) {
+      const request = ++catalogueRequest;
+      document.getElementById('catalogue').hidden = false;
+      document.getElementById('message').textContent = 'Loading letter folders…';
+      google.script.run.withSuccessHandler(result => {
+        if (request === catalogueRequest) renderFolders(result, Boolean(query.trim()));
+      }).withFailureHandler(error => {
+        if (request === catalogueRequest) document.getElementById('message').textContent = error.message;
+      }).listFolders(query);
+    }
+    function renderNavigation(root, navigation, position) {
+      const nav = element('nav', null, root, 'letter-nav');
+      nav.setAttribute('aria-label', 'Letter navigation ' + position);
+      const back = element('a', '← All folders', nav, 'button');
+      back.href = document.body.dataset.url + (navigation ? '?folder=' + encodeURIComponent(navigation.folder) : '');
+      if (!navigation) return;
+      element('span', folderLabel(navigation.folder) + ' · Letter ' + navigation.position + ' of ' + navigation.total, nav, 'nav-position');
+      const steps = element('div', null, nav, 'nav-steps');
+      for (const [key, label] of [['previous', '← Previous letter'], ['next', 'Next letter →']]) {
+        if (navigation[key]) {
+          const a = linkTo(navigation[key].letter_id, label, steps); a.className = 'button'; a.rel = key === 'previous' ? 'prev' : 'next';
+        } else element('span', label, steps, 'button disabled').setAttribute('aria-disabled', 'true');
+      }
     }
     function relationshipLabel(link, id) {
       const other = link.from_letter === id ? link.to_letter : link.from_letter;
@@ -54,80 +199,114 @@
         : link.relation.replace(/_/g, ' ') + (link.from_letter === id ? ' →' : ' ←');
       return { other, label: link.status.toUpperCase() + ': ' + direction };
     }
-    function renderLetter(result) {
-      const root = document.getElementById('record');
-      root.replaceChildren();
-      const letter = result.letter;
-      element('h2', value(letter.metadata, 'sender') + ' → ' + value(letter.metadata, 'recipient'), root);
-      element('p', letter.letter_id + ' · ' + value(letter.metadata, 'date'), root);
-      const status = element('p', 'Transcription: ' + letter.execution + ' · Grouping: ' + letter.grouping +
-        ' · Metadata review: ' + letter.metadata_review + ' · Human transcription review: ' +
-        letter.transcription_review + ' · Relationship review: ' + letter.relationship_review, root);
-      status.className = 'notice';
-      if (letter.review_reasons.length) element('p', letter.review_reasons.join('\n'), root);
-      if (letter.summary) element('p', 'Interpretive summary: ' + letter.summary, root);
-      if (letter.hints) element('p', 'Provisional filename/folder hints (not document evidence): ' +
-        [letter.hints.sender, letter.hints.recipient, letter.hints.date, letter.hints.folder].filter(Boolean).join(' · '), root);
-      const reader = element('div', null, root); reader.className = 'reader';
-      const text = element('section', null, reader); text.className = 'panel';
-      element('h3', 'Source-language transcription', text);
-      if (!letter.pages.length) {
-        element('p', 'No complete transcription is available.', text);
-        if (letter.partial_response) {
-          element('h4', 'Unaccepted or partial service response', text);
-          element('pre', letter.partial_response, text);
+    function renderPage(root, scan, page, letter, number, jobs) {
+      const pair = element('section', null, root, 'page-pair');
+      pair.dataset.imageId = scan ? scan.image_id : page.image_id;
+      element('h3', 'Page ' + number, pair);
+      const columns = element('div', null, pair, 'page-columns');
+      const figure = element('figure', null, columns, 'page-column');
+      element('p', 'Original scan', figure, 'column-label');
+      const sheet = element('div', null, figure, 'page-sheet scan-sheet');
+      const scanMessage = !scan ? 'No source scan is listed for this transcription.' :
+        scan.status === 'missing' ? 'Scan missing from local inventory.' :
+        scan.status !== 'ready' ? 'Inventory scan state: ' + scan.status :
+        scan.mapping_status !== 'mapped' ? 'No Google Drive mapping supplied.' : 'Loading authenticated scan…';
+      const message = element('p', scanMessage, sheet, 'scan-message');
+      const caption = element('figcaption', scan ? scan.order + '. ' + scan.path : page.image_id, figure);
+      if (scan && scan.mapping_status === 'mapped' && scan.status === 'ready') jobs.push({ scan, pair, sheet, caption, message });
+      const text = element('section', null, columns, 'page-column');
+      element('p', 'Source-language transcription', text, 'column-label');
+      const transcript = element('div', null, text, 'page-sheet transcript-sheet');
+      transcript.tabIndex = 0;
+      transcript.setAttribute('role', 'region');
+      transcript.setAttribute('aria-label', 'Transcription, page ' + number);
+      if (!page) element('p', 'No complete transcription is available for this page.', transcript);
+      else {
+        if (page.status !== 'text') element('p', 'Page status: ' + page.status, transcript, 'page-status');
+        element('pre', page.text, transcript);
+        for (const note of page.annotations || []) {
+          element('h4', 'Annotation (' + note.kind + ')', transcript);
+          element('pre', note.text, transcript);
         }
-      }
-      for (const page of letter.pages) {
-        const scan = letter.scans.find(s => s.image_id === page.image_id);
-        element('h4', 'Page ' + page.image_id + ' · ' + (scan ? scan.filename : '') + ' · ' + page.status, text);
-        element('pre', page.text, text);
-        for (const note of page.annotations) {
-          element('p', 'Annotation (' + note.kind + ')', text);
-          element('pre', note.text, text);
-        }
-      }
-      if (letter.notes.length) {
-        element('h3', 'Separate notes', text);
-        element('pre', letter.notes.join('\n'), text);
       }
       for (const translation of letter.translations || []) {
-        element('h3', 'Optional translation · ' + translation.image_id + ' · ' + translation.language, text);
-        element('pre', translation.text, text);
+        if (translation.image_id !== pair.dataset.imageId) continue;
+        element('h4', 'Optional translation · ' + translation.language, transcript);
+        element('pre', translation.text, transcript);
       }
-      const scans = element('section', null, reader); scans.className = 'panel';
-      element('h3', 'Ordered source scans', scans);
-      const jobs = [];
-      for (const scan of letter.scans) {
-        const figure = element('figure', null, scans);
-        element('figcaption', scan.order + '. ' + scan.path + ' · ' + scan.image_id, figure);
-        const message = element('p', scan.status === 'missing' ? 'Scan missing from local inventory.' :
-          scan.mapping_status === 'missing_mapping' ? 'No Google Drive mapping supplied.' :
-          'Loading authenticated scan…', figure);
-        if (scan.mapping_status === 'mapped' && scan.status === 'ready') {
-          jobs.push({ scan, figure, message });
-        }
-      }
+    }
+    function loadScans(jobs, result) {
       // Sequential downloads preserve positions and bound simultaneous image memory.
-      function next() {
-        const job = jobs.shift();
-        if (!job) return;
-        google.script.run.withSuccessHandler(answer => {
-          job.message.textContent = answer.message || '';
-          if (answer.status === 'ready') {
-            const image = element('img', null, job.figure);
-            image.alt = job.scan.filename;
-            image.onerror = () => { job.message.textContent = 'Image bytes could not be displayed.'; };
-            image.src = answer.data;
-            const a = element('a', 'Open original in Drive', job.figure);
-            a.href = answer.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
-          }
-          next();
-        }).withFailureHandler(error => { job.message.textContent = error.message; next(); })
-          .loadImage({ token: result.token, letter_id: letter.letter_id, image_id: job.scan.image_id });
+      const job = jobs.shift();
+      if (!job) return;
+      google.script.run.withSuccessHandler(answer => {
+        job.message.textContent = answer.message || '';
+        if (answer.status === 'ready') {
+          const image = element('img', null, job.sheet);
+          image.alt = job.scan.filename;
+          image.onload = () => {
+            if (image.naturalWidth && image.naturalHeight) job.pair.style.setProperty('--page-ratio', image.naturalWidth + ' / ' + image.naturalHeight);
+          };
+          image.onerror = () => { image.hidden = true; job.message.textContent = 'Image bytes could not be displayed.'; };
+          image.src = answer.data;
+          const a = element('a', 'Open original in Drive ↗', job.caption);
+          a.href = answer.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        }
+        loadScans(jobs, result);
+      }).withFailureHandler(error => { job.message.textContent = error.message; loadScans(jobs, result); })
+        .loadImage({ token: result.token, letter_id: result.letter.letter_id, image_id: job.scan.image_id });
+    }
+    function renderMetadata(root, letter) {
+      const section = element('section', null, root, 'panel');
+      element('h3', 'Letter details', section);
+      const grid = element('dl', null, section, 'metadata-grid');
+      const labels = { sender: 'Sender', recipient: 'Recipient', date: 'Date as written', place_written: 'Place written',
+        addresses: 'Addresses', affiliations: 'Affiliations', language: 'Language', document_type: 'Document type',
+        attributed_author: 'Attributed author', physical_hand: 'Physical hand' };
+      for (const [name, label] of Object.entries(labels)) {
+        const item = element('div', null, grid); element('dt', label, item);
+        const dd = element('dd', value(letter.metadata, name), item);
+        const field = (letter.metadata || {})[name] || {};
+        if (field.certainty && field.certainty !== 'explicit') element('span', 'Certainty: ' + field.certainty, dd, 'field-note');
+        if (field.normalized && field.normalized !== field.value) element('span', 'Normalized: ' + field.normalized, dd, 'field-note');
       }
-      next();
-      const related = element('section', null, root); related.className = 'panel';
+      const id = element('div', null, grid); element('dt', 'Archival ID', id); element('dd', letter.letter_id, id);
+      if (letter.hints) element('p', 'Provisional filename/folder hints (not document evidence): ' +
+        [letter.hints.sender, letter.hints.recipient, letter.hints.date, letter.hints.folder].filter(Boolean).join(' · '), section, 'muted');
+      if (letter.active === false) element('p', 'Retired record', section, 'notice');
+      element('p', 'Transcription: ' + letter.execution + ' · Grouping: ' + letter.grouping +
+        ' · Metadata review: ' + letter.metadata_review + ' · Human transcription review: ' +
+        letter.transcription_review + ' · Relationship review: ' + letter.relationship_review, section, 'notice');
+      if ((letter.review_reasons || []).length) element('p', letter.review_reasons.join('\n'), section, 'preserve');
+      if ((letter.notes || []).length) {
+        element('h3', 'Separate notes', section); element('p', letter.notes.join('\n'), section, 'preserve');
+      }
+      if (letter.partial_response) {
+        element('h3', 'Unaccepted or partial service response', section); element('pre', letter.partial_response, section);
+      }
+    }
+    function renderLetter(result) {
+      const root = document.getElementById('record'); root.replaceChildren(); root.hidden = false;
+      document.getElementById('catalogue').hidden = true;
+      const letter = result.letter;
+      renderNavigation(root, result.navigation, 'top');
+      const heading = element('header', null, root, 'letter-heading');
+      if (result.navigation) element('p', folderLabel(result.navigation.folder), heading, 'eyebrow');
+      element('h2', value(letter.metadata, 'sender') + ' → ' + value(letter.metadata, 'recipient'), heading);
+      element('p', value(letter.metadata, 'date') + ' · ' + letter.scans.length + ' page(s)', heading, 'muted');
+      const summary = element('section', null, root, 'letter-summary');
+      element('h3', 'Interpretive summary', summary);
+      element('p', letter.summary || 'No summary is available for this letter yet.', summary);
+      element('p', 'Each scan is paired with its transcription. Longer transcriptions scroll within their panel.', root, 'reading-help');
+      const jobs = [], pages = new Map(letter.pages.map(page => [page.image_id, page]));
+      letter.scans.forEach((scan, index) => renderPage(root, scan, pages.get(scan.image_id), letter, index + 1, jobs));
+      // Preserve saved text even if a malformed/older bundle has a page without a scan.
+      const scanIds = new Set(letter.scans.map(scan => scan.image_id));
+      let number = letter.scans.length;
+      for (const page of letter.pages) if (!scanIds.has(page.image_id)) renderPage(root, null, page, letter, ++number, jobs);
+      if (!number) element('p', 'No source pages or complete transcription are available.', root, 'notice');
+      renderMetadata(root, letter);
+      const related = element('section', null, root, 'panel');
       element('h3', 'Correspondence connections', related);
       if (!result.links.length && !result.unresolved.length) element('p', 'No saved links or references.', related);
       for (const connection of result.links) {
@@ -136,48 +315,35 @@
         linkTo(label.other, label.other, row);
         if (connection.needs_rematch) element('span', ' · Saved metadata changed; rematch required.', row);
         if (connection.decision_needs_review) element('span', ' · Earlier decision preserved; its evidence needs review.', row);
-        if (connection.evidence && connection.evidence.length) {
-          element('pre', connection.evidence.map(e => e.image_id + ': ' + e.quote).join('\n'), related);
-        }
-        if (connection.contradictions && connection.contradictions.length) {
-          element('p', connection.contradictions.join('; '), related);
-        }
+        if (connection.evidence && connection.evidence.length) element('pre', connection.evidence.map(e => e.image_id + ': ' + e.quote).join('\n'), related);
+        if (connection.contradictions && connection.contradictions.length) element('p', connection.contradictions.join('; '), related);
       }
-      for (const reference of result.unresolved) {
-        element('p', 'UNRESOLVED — scan not identified: ' + reference.reference.description, related);
-      }
+      for (const reference of result.unresolved) element('p', 'UNRESOLVED — scan not identified: ' + reference.reference.description, related);
       for (const warning of result.warnings) element('p', warning, related);
-      const details = element('details', null, root);
+      const details = element('details', null, root, 'provenance');
       element('summary', 'Metadata evidence and technical provenance', details);
       element('pre', JSON.stringify({ metadata: letter.metadata, provenance: letter.provenance }, null, 2), details);
+      renderNavigation(root, result.navigation, 'bottom');
+      loadScans(jobs, result);
     }
     function openLetter(id) {
       document.getElementById('message').textContent = 'Loading letter…';
       google.script.run.withSuccessHandler(result => {
-        document.getElementById('message').textContent = '';
-        renderLetter(result);
-      }).withFailureHandler(error => { document.getElementById('message').textContent = error.message; }).loadLetter(id);
+        document.getElementById('message').textContent = ''; renderLetter(result);
+      }).withFailureHandler(error => {
+        document.getElementById('message').textContent = error.message;
+        const root = document.getElementById('record'); root.hidden = false; renderNavigation(root, null, 'error');
+      }).loadLetter(id);
     }
     document.getElementById('search').addEventListener('submit', event => {
-      event.preventDefault();
-      google.script.run.withSuccessHandler(result => {
-        const root = document.getElementById('results'); root.replaceChildren();
-        document.getElementById('message').textContent = result.total + ' result(s)' +
-          (result.limited ? '; first 100 shown — narrow your search.' : '');
-        for (const letter of result.letters) {
-          const row = element('p', null, root);
-          linkTo(letter.letter_id, value(letter.metadata, 'sender') + ' → ' + value(letter.metadata, 'recipient') +
-            ' · ' + value(letter.metadata, 'date') + ' · ' + letter.execution, row);
-          if (!letter.metadata.sender && letter.hints) {
-            element('span', ' · Filename hints: ' +
-              [letter.hints.sender, letter.hints.recipient, letter.hints.date].filter(Boolean).join(' / '), row);
-          }
-        }
-      }).withFailureHandler(error => { document.getElementById('message').textContent = error.message; })
-        .searchLetters(document.getElementById('query').value);
+      event.preventDefault(); loadFolders(document.getElementById('query').value);
     });
-    if (!document.getElementById('initial-error').textContent.trim() && document.body.dataset.letter) {
-      openLetter(document.body.dataset.letter);
+    document.getElementById('clear-search').addEventListener('click', () => {
+      document.getElementById('query').value = ''; loadFolders('');
+    });
+    if (!document.getElementById('initial-error').textContent.trim()) {
+      if (document.body.dataset.letter) openLetter(document.body.dataset.letter);
+      else loadFolders('');
     }
   </script>
 </body>

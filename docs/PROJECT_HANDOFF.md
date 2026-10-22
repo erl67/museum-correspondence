@@ -29,6 +29,29 @@ during this resumed work.
 
 ## Responsibilities
 
+### Folder catalogue and letter reading view — 2026-10-22
+
+The Apps Script viewer now starts with expandable source folders and complete chronological
+sender/recipient tables, including labelled unprocessed/retired entries. Search filters those
+folders without the legacy 100-row cap. Supported document dates determine order; valid filename
+dates are explicitly provisional fallbacks only when no document date exists. Ambiguous and
+undated letters sort last. Equal dates use stable IDs; partial dates retain their precision.
+
+Each letter view places its interpretive summary first, then one scan-left/transcription-right
+pair per source page, matched by image ID in exported order. Both sheets match the decoded
+image's proportions on desktop, with scrollable long text; mobile pairs stack with full-height
+text. Metadata, reviews, notes, partial responses and connections follow all pages. Previous/next
+letter controls at both ends follow that folder's full order; returning to folders reopens it.
+Existing schema-1 exports work without regeneration. Authentication and hash checks are unchanged.
+
+Offline verification: **110 Python and 28 viewer tests passed, no failures or skips**.
+No source scans, saved readings or exports were changed. No live service requests, upload,
+sharing change, deployment, commit or push occurred. The access/export IDs remain unconfigured;
+native Google rendering and authenticated deployment checks still require authorized setup.
+The local synthetic browser preview could not be reached by the in-app browser (connection
+timeout), so visual browser verification remains outstanding. Its optional preview harness is
+in ignored `local/viewer-preview-20261022.cjs`; the preview server has been stopped.
+
 ### Authorized filename convention migration — 2026-10-21
 
 The user explicitly authorized renaming the Drive collection to

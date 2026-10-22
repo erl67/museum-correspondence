@@ -79,10 +79,37 @@ Official references: [web-app permissions](https://developers.google.com/apps-sc
 
 ## Reading view and availability
 
-Search sender, recipient, date or saved text. Links use `…/exec?letter=ltr_…`, independent of
-names/dates. Each letter displays source-language text beside ordered original scans,
-separate notes/optional translations, review states, summary and correspondence connections.
-Provenance/evidence is in a collapsed details panel, away from the main reading.
+The start page lists every source folder represented in the export. Click its disclosure
+arrow or name (or use Enter/Space on the focused heading) to expand a complete table of dates,
+senders, recipients, page counts and reading availability. Folders begin collapsed. Unprocessed
+letters remain listed; retired records are labelled. Search folders, sender, recipient, date or
+saved text to show matching letters in expanded folders; **Show all** restores the full catalogue.
+The folder catalogue is not subject to the legacy search RPC's 100-result cap.
+
+Within each folder, letters run oldest first, using supported normalized document dates.
+Partial dates retain year/month precision and sort before more specific dates with the same
+prefix; equal dates use the stable archival ID as a deterministic tie-breaker. This display
+order does not establish the sequence of overlapping partial dates. When there is no document
+date, a valid filename date can position a letter and is explicitly labelled as an unverified
+hint. Ambiguous/unsupported document dates and undated records follow dated records; filename
+hints never override an ambiguous document date. Folder membership comes from the export,
+not live Drive folder discovery; empty folders without letters are not in that export.
+
+**Read letter** opens one complete letter at `…/exec?letter=ltr_…`, independent of names/dates.
+An interpretive summary appears above all its source pages. Each page pairs its original scan
+on the left with its own source-language transcription on the right, matched by image ID in
+exported scan order. The transcription has a subtle paper background and left accent. On desktop,
+both panels have equal width and the loaded scan's proportions; long text scrolls inside its
+keyboard-focusable panel, preserving every line, annotation and optional translation. While
+loading or unavailable, scans reserve a portrait-shaped slot. On narrow screens each pair stacks
+scan then transcription, and the text flows to its full height.
+
+Sender, recipient, date, place, addresses, affiliations, language and other saved metadata are
+shown below all pages, followed by review states, separate notes, partial responses and
+correspondence connections. Evidence and technical provenance remain in a collapsed panel.
+**Previous letter** and **Next letter** at both top and bottom follow the complete folder order,
+including when opened from search. They stop at folder boundaries. **All folders** returns to
+the catalogue with that letter's folder expanded (`…/exec?folder=…`).
 
 Proposed, confirmed, rejected and unresolved connections have distinct labels. Incoming
 confirmed replies and outgoing predecessors use the same stable-ID links. Earlier decisions
@@ -103,8 +130,10 @@ template parameters use escaped printing. No source text is evaluated as HTML.
 ## Limits and offline verification
 
 This minimal version rereads the export on each RPC. Maximum export: 10 MiB; image: 12 MiB;
-sum of planned image bytes per letter: 24 MiB. Search returns at most 100 results with a
-clear limitation notice. Large collections will need partitioned viewer exports later.
+sum of planned image bytes per letter: 24 MiB. The folder catalogue and its search return all
+matching rows within that export; full page text/images load only when opening a letter.
+The older `searchLetters` RPC retains its 100-result limit and limitation flag for compatibility.
+Large collections will need partitioned viewer exports later.
 These bounds do not establish Apps Script response/runtime capacity for every deployment.
 
 ```powershell
@@ -112,8 +141,10 @@ node --test apps_script/viewer/test_viewer.cjs
 ```
 
 Tests run the real server functions against synthetic Drive objects, and the actual browser
-script against a small DOM/RPC adapter. They cover escaping, order, missing mappings/scans,
-revoked access, hash changes, limits, relationship labels and text surviving image failures.
+script against a small DOM/RPC adapter. They cover complete folder lists, conservative chronology,
+search, navigation boundaries, matching each scan to its text, image-driven panel proportions,
+escaping, missing mappings/scans, revoked access, hash changes, limits, relationship labels and
+text surviving image failures.
 No authenticated Drive calls occur. After authorized installation, verify with an allowed
 reader and a denied reader; check native template rendering, image payload size/latency,
 Google authorization and access revocation. Offline tests cannot prove deployed permissions.

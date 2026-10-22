@@ -9,11 +9,15 @@ node --test apps_script/viewer/test_viewer.cjs
 git diff --check
 ```
 
-Recorded on **2026-10-21**, Windows, Python **3.14.2**, Node **24.19.0**:
-**110 Python tests passed, 0 failed, 0 skipped; 19 viewer tests passed, 0 failed,
+Recorded on **2026-10-22**, Windows, Python **3.14.2**, Node **24.19.0**:
+**110 Python tests passed, 0 failed, 0 skipped; 28 viewer tests passed, 0 failed,
 0 skipped.** Pinned runtime dependencies were installed in this repository's `.venv`:
 google-genai 2.23.0, Pillow 12.3.0, tzdata 2026.3. The SDK emits a Python 3.14
 `_UnionGenericAlias` deprecation warning; it does not fail the suite.
+
+The 2026-10-22 folder/reader update passed the offline DOM/RPC tests. Its local synthetic
+preview server was unreachable from the in-app browser (connection timeout); visual browser
+verification remains outstanding. No native Google rendering or authenticated calls were made.
 
 The first run exposed a test expectation that assumed nested camelCase wire serialization.
 The actual pinned SDK preserves `thinking_level` within `thinkingConfig`; the test now checks
@@ -67,6 +71,10 @@ paths, selecting older eligible cache revisions for exports, and approval invali
   ordered scans, authorization on every RPC, missing/inaccessible/changed/oversized images,
   explicit relationship/review labels, unresolved references and absent transcriptions;
   compact-date/full-filename search and displayed current scan names in exported order.
+- Complete expandable folder catalogues beyond 100 letters, filtered searches and stale-response
+  handling, conservative document/hint chronology, partial/ambiguous dates, retired records,
+  previous/next boundaries, folder return links, page-specific scan/text/translation pairing,
+  summary-before-pages and metadata-after-pages, image proportions and decode failure recovery.
 
 All temporary fixtures live under ignored `local/test-tmp` and are cleaned up by unittest.
 No optional skips hide missing SDK coverage: install requirements before running.

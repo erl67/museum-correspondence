@@ -166,8 +166,11 @@ unresolved. Shared subject matter alone does not establish a reply.
 
 ## Viewer and verification
 
-The [Apps Script viewer](apps_script/viewer/README.md) searches saved text and metadata, displays
-ordered scans beside transcriptions, and navigates correspondence links. It makes no
+The [Apps Script viewer](apps_script/viewer/README.md) starts with expandable letter folders,
+each listing dates, senders and recipients in chronological order. Search filters the folders
+by saved text and metadata. Open a letter for its summary, then each original scan on the left
+and its matching transcription on the right. Letter details and connections follow the pages;
+previous/next letter and folder navigation appear at both top and bottom. It makes no
 transcription-service calls. It needs a deliberate Drive mapping and the institution's existing
 access-gate configuration. Nothing is uploaded, deployed, made public, or shared by the Python
 application through the Drive API. Explicit `--publish-text` writes generated files into the
