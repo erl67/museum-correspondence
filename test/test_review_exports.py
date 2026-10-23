@@ -110,6 +110,67 @@ class ReviewExportTests(Workspace):
         canonical = read_json(self.root / "exports" / "records.json")
         self.assertEqual(canonical["records"][0]["document"]["summary"], "=SYNTHETIC()\ncafé 00123")
 
+    def test_catalogue_aliases_preserve_readings_uncertainty_and_identity(self):
+        original = deepcopy(self.store.results())
+        person = apply_review(self.store, self.inventory, dict(kind="person", name="Alice Example",
+            aliases=["A.", "A"], standardize_display=True, review_status="approved", source="Staff catalogue"))["data"]
+        sender = dict(value="A.", normalized="A.", certainty="inferred", evidence=[])
+        self.review(metadata={"sender": sender})
+        record = current_records(self.store, self.inventory)[0]
+        self.assertEqual(record["document"]["metadata"]["sender"], sender)
+        self.assertEqual(record["catalogue_names"]["sender"]["name"], "Alice Example")
+        self.assertEqual(record["catalogue_names"]["sender"]["basis"], "metadata")
+        self.assertEqual(self.store.results(), original)
+        export_all(self.store, self.inventory, self.root / "exports")
+        letter = read_json(self.root / "exports/viewer.json")["letters"][0]
+        self.assertEqual(letter["catalogue_names"], record["catalogue_names"])
+        self.assertEqual(letter["metadata"]["sender"], sender)
+        apply_review(self.store, self.inventory, dict(person, name="Alice Preferred"))
+        self.assertEqual(current_records(self.store, self.inventory)[0]["catalogue_names"]["sender"]["name"], "Alice Preferred")
+
+    def test_catalogue_aliases_are_opt_in_and_ambiguous_matches_stay_unresolved(self):
+        from correspondence.catalogue import catalogue_names
+        a = dict(person_id="per_a", name="Alice", aliases=["A"], source="Staff")
+        self.assertEqual(catalogue_names({}, {"sender": "A"}, {"per_a": a}), {})
+        a["standardize_display"] = True
+        names = catalogue_names({}, {"sender": "A"}, {"per_a": a})
+        self.assertEqual(names["sender"]["basis"], "filename hint")
+        b = dict(a, person_id="per_b", name="Another")
+        self.assertEqual(catalogue_names({}, {"sender": "A"}, {"per_a": a, "per_b": b}), {})
+        self.assertEqual(catalogue_names({"sender": {"value": "Different"}}, {"sender": "A"}, {"per_a": a}), {})
+        b["aliases"] = ["B"]
+        self.assertEqual(catalogue_names({"sender": {"value": "A", "normalized": "B"}}, {}, {"per_a": a, "per_b": b}), {})
+
+    def confirm_short_date(self):
+        date = dict(value="May 2, '99", normalized="1899-05-02", precision="day", certainty="inferred", evidence=[])
+        self.review(metadata={"date": date}, catalogue_date=dict(value="1899-05-02", precision="day"))
+        return date
+
+    def test_catalogue_date_is_separate_from_document_and_relationship_dates(self):
+        from correspondence.schema import usable_date
+        date = self.confirm_short_date()
+        record = current_records(self.store, self.inventory)[0]
+        self.assertEqual(record["document"]["metadata"]["date"], date)
+        self.assertIsNone(usable_date(date))
+        self.assertEqual(record["catalogue_date"]["value"], "1899-05-02")
+        export_all(self.store, self.inventory, self.root / "exports")
+        self.assertEqual(read_json(self.root / "exports/viewer.json")["letters"][0]["catalogue_date"], record["catalogue_date"])
+        self.review(metadata={"recipient": self.doc["metadata"]["recipient"]})
+        self.assertIsNotNone(current_records(self.store, self.inventory)[0]["catalogue_date"])
+        with self.assertRaisesRegex(ValueError, "Catalogue date"):
+            self.review(catalogue_date=dict(value="1999-05-02", precision="day"))
+
+    def test_catalogue_date_confirmation_expires_on_text_date_or_revision_changes(self):
+        date = self.confirm_short_date()
+        self.review(metadata={"date": dict(date, certainty="uncertain")})
+        self.assertIsNone(current_records(self.store, self.inventory)[0]["catalogue_date"])
+        self.confirm_short_date()
+        self.review(pages={self.letter["image_ids"][0]: {"text": "Changed synthetic reading"}})
+        self.assertIsNone(current_records(self.store, self.inventory)[0]["catalogue_date"])
+        self.confirm_short_date()
+        self.store.append("result", dict(self.result, revision_id="rev_new"))
+        self.assertIsNone(current_records(self.store, self.inventory)[0]["catalogue_date"])
+
     def test_reports_page_boundaries_and_offline_exports(self):
         before = self.store.journal.read_bytes()
         with patch("correspondence.provider.Gemini.send", side_effect=AssertionError("network forbidden")):

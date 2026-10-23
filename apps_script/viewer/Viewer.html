@@ -133,16 +133,21 @@
       return (prefersNormalized(name) ? normalized || field.value : field.value || normalized) || 'Unknown';
     }
     function folderLabel(name) { return name === '.' ? 'Collection root' : name; }
+    function displayValue(letter, name) {
+      const label = (letter.catalogue_names || {})[name];
+      return label ? label.name : value(letter.metadata, name);
+    }
     function displayField(parent, letter, name) {
       const field = (letter.metadata || {})[name] || {};
       if (field.value || field.normalized) {
-        element('span', value(letter.metadata, name), parent);
+        element('span', displayValue(letter, name), parent);
         if (field.certainty && field.certainty !== 'explicit') element('span', field.certainty, parent, 'field-note');
       } else if (letter.hints && letter.hints[name]) {
-        element('span', letter.hints[name], parent);
+        element('span', ((letter.catalogue_names || {})[name] || {}).name || letter.hints[name], parent);
         element('span', 'Filename hint · unverified', parent, 'field-note');
       } else element('span', name === 'date' ? 'Undated' : 'Unknown', parent);
       if (name === 'date' && letter.sort_basis === 'unknown') element('span', 'Not placed in chronology', parent, 'field-note');
+      if (name === 'date' && letter.catalogue_date) element('span', 'Catalogue date confirmed', parent, 'field-note');
     }
     function renderFolders(result, searching) {
       const root = document.getElementById('results'); root.replaceChildren();
@@ -165,8 +170,8 @@
           for (const name of ['date', 'sender', 'recipient']) displayField(element('td', null, row), letter, name);
           const reading = element('td', null, row);
           const a = linkTo(letter.letter_id, 'Read letter →', reading);
-          a.setAttribute('aria-label', 'Read letter: ' + value(letter.metadata, 'sender') + ' to ' +
-            value(letter.metadata, 'recipient') + ', ' + value(letter.metadata, 'date') + ', ' + letter.letter_id);
+          a.setAttribute('aria-label', 'Read letter: ' + displayValue(letter, 'sender') + ' to ' +
+            displayValue(letter, 'recipient') + ', ' + displayValue(letter, 'date') + ', ' + letter.letter_id);
           element('span', letter.page_count + ' page(s) · ' + letter.execution, reading, 'field-note');
           if (letter.active === false) element('span', 'Retired record', reading, 'field-note');
         }
@@ -189,7 +194,7 @@
       const back = element('a', '← All folders', nav, 'button');
       back.href = document.body.dataset.url + (navigation ? '?folder=' + encodeURIComponent(navigation.folder) : '');
       if (!navigation) return;
-      element('span', folderLabel(navigation.folder) + ' · Letter ' + navigation.position + ' of ' + navigation.total, nav, 'nav-position');
+      element('span', folderLabel(navigation.folder) + (navigation.position ? ' · Letter ' + navigation.position + ' of ' + navigation.total : ' · Retired record'), nav, 'nav-position');
       const steps = element('div', null, nav, 'nav-steps');
       for (const [key, label] of [['previous', '← Previous letter'], ['next', 'Next letter →']]) {
         if (navigation[key]) {
@@ -216,7 +221,7 @@
       const scanMessage = !scan ? 'No source scan is listed for this transcription.' :
         scan.status === 'missing' ? 'Scan missing from local inventory.' :
         scan.status !== 'ready' ? 'Inventory scan state: ' + scan.status :
-        !canLoad ? 'No Google Drive mapping supplied. Configure the collection scan folder or an image mapping.' : 'Loading authenticated scan…';
+        !canLoad ? 'No Google Drive mapping supplied. Configure the collection scan folder or an image mapping.' : 'Loading scan…';
       const message = element('p', scanMessage, sheet, 'scan-message');
       const caption = element('figcaption', scan ? scan.order + '. ' + scan.path : page.image_id, figure);
       if (canLoad && scan.status === 'ready') jobs.push({ scan, pair, sheet, caption, message });
@@ -255,8 +260,10 @@
           };
           image.onerror = () => { image.hidden = true; job.message.textContent = 'Image bytes could not be displayed.'; };
           image.src = answer.data;
-          const a = element('a', 'Open original in Drive ↗', job.caption);
-          a.href = answer.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+          if (answer.url) {
+            const a = element('a', 'Open original in Drive ↗', job.caption);
+            a.href = answer.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+          }
         }
         loadScans(jobs, result);
       }).withFailureHandler(error => { job.message.textContent = error.message; loadScans(jobs, result); })
@@ -271,13 +278,16 @@
         attributed_author: 'Attributed author', physical_hand: 'Physical hand' };
       for (const [name, label] of Object.entries(labels)) {
         const item = element('div', null, grid); element('dt', label, item);
-        const dd = element('dd', value(letter.metadata, name), item);
+        const dd = element('dd', displayValue(letter, name), item);
         const field = (letter.metadata || {})[name] || {};
-        if (field.certainty && field.certainty !== 'explicit') element('span', 'Certainty: ' + field.certainty, dd, 'field-note');
+        const authority = (letter.catalogue_names || {})[name];
+        if (authority && authority.basis === 'filename hint') element('span', 'Filename hint · unverified', dd, 'field-note');
+        else if (field.certainty && field.certainty !== 'explicit') element('span', 'Certainty: ' + field.certainty, dd, 'field-note');
         if (!prefersNormalized(name) && field.normalized && field.normalized !== field.value) {
           element('span', 'Normalized: ' + field.normalized, dd, 'field-note');
         }
       }
+      if (letter.catalogue_date) element('p', 'Catalogue date confirmed: ' + letter.catalogue_date.value + ' · ' + letter.catalogue_date.source, section, 'muted');
       const id = element('div', null, grid); element('dt', 'Archival ID', id); element('dd', letter.letter_id, id);
       if (letter.hints) element('p', 'Provisional filename/folder hints (not document evidence): ' +
         [letter.hints.sender, letter.hints.recipient, letter.hints.date, letter.hints.folder].filter(Boolean).join(' · '), section, 'muted');
@@ -298,10 +308,15 @@
       document.getElementById('catalogue').hidden = true;
       const letter = result.letter;
       renderNavigation(root, result.navigation, 'top');
+      if (letter.active === false) {
+        const notice = element('section', null, root, 'notice');
+        element('p', 'This is a retired grouping, retained for history. It is excluded from the current catalogue.', notice);
+        for (const current of result.currentScanLetters || []) linkTo(current.letter_id, 'Open current letter containing these scans →', notice);
+      }
       const heading = element('header', null, root, 'letter-heading');
       if (result.navigation) element('p', folderLabel(result.navigation.folder), heading, 'eyebrow');
-      element('h2', value(letter.metadata, 'sender') + ' → ' + value(letter.metadata, 'recipient'), heading);
-      element('p', value(letter.metadata, 'date') + ' · ' + letter.scans.length + ' page(s)', heading, 'muted');
+      element('h2', displayValue(letter, 'sender') + ' → ' + displayValue(letter, 'recipient'), heading);
+      element('p', displayValue(letter, 'date') + ' · ' + letter.scans.length + ' page(s)', heading, 'muted');
       const summary = element('section', null, root, 'letter-summary');
       element('h3', 'Interpretive summary', summary);
       element('p', letter.summary || 'No summary is available for this letter yet.', summary);
@@ -329,8 +344,9 @@
       for (const reference of result.unresolved) element('p', 'UNRESOLVED — scan not identified: ' + reference.reference.description, related);
       for (const warning of result.warnings) element('p', warning, related);
       const details = element('details', null, root, 'provenance');
-      element('summary', 'Metadata evidence and technical provenance', details);
-      element('pre', JSON.stringify({ metadata: letter.metadata, provenance: letter.provenance }, null, 2), details);
+      element('summary', result.publicMode ? 'Metadata evidence' : 'Metadata evidence and technical provenance', details);
+      element('pre', JSON.stringify({ metadata: letter.metadata, catalogue_names: letter.catalogue_names,
+        catalogue_date: letter.catalogue_date, provenance: letter.provenance }, null, 2), details);
       renderNavigation(root, result.navigation, 'bottom');
       loadScans(jobs, result);
     }

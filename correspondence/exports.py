@@ -115,6 +115,9 @@ def export_all(store, inventory, output, mapping=None):
                          sender=meta.get("sender", {}).get("value"), recipient=meta.get("recipient", {}).get("value"),
                          sender_search=meta.get("sender", {}).get("normalized"),
                          recipient_search=meta.get("recipient", {}).get("normalized"),
+                         sender_display=record["catalogue_names"].get("sender", {}).get("name"),
+                         recipient_display=record["catalogue_names"].get("recipient", {}).get("name"),
+                         catalogue_date=(record["catalogue_date"] or {}).get("value"),
                          date_as_written=meta.get("date", {}).get("value"),
                          date_normalized=meta["date"]["normalized"] if usable_date(meta.get("date", {})) else None,
                          date_precision=meta.get("date", {}).get("precision"),
@@ -146,12 +149,14 @@ def export_all(store, inventory, output, mapping=None):
                            metadata_review=record["metadata_review"], transcription_review=record["transcription_review"],
                            relationship_review=record["relationship_review"], review_reasons=record["review_reasons"],
                            hints=record["hints"], metadata=meta, summary=doc["summary"] if doc else "", pages=doc["pages"] if doc else [],
+                           catalogue_names=record["catalogue_names"], catalogue_date=record["catalogue_date"],
                            notes=doc["notes"] if doc else [], translations=doc["translations"] if doc else [], scans=scans,
                            partial_response=record["result"].get("text", "") if record["result"] and not doc else "",
                            provenance=record["result"]["provenance"] if record["result"] else None))
     catalogue_fields = ["letter_id", "active", "grouping", "execution", "metadata_review", "transcription_review",
                         "relationship_review", "page_count", "filename_sender_hint", "filename_recipient_hint",
                         "filename_date_hint", "folder_hint", "sender", "recipient", "sender_search", "recipient_search",
+                        "sender_display", "recipient_display", "catalogue_date",
                         "date_as_written", "date_normalized", "date_precision", "summary", "review_reasons_json", "report_path"]
     write_csv(output / "catalogue.csv", catalogue_fields, catalogue)
     write_csv(output / "images.csv", ["letter_id", "image_id", "order", "path", "filename", "folder", "status",

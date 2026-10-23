@@ -143,6 +143,54 @@ the full updated name/alias list. Shared surnames or aliases never automatically
 two different approved people may legitimately share initials. Alias approval is separate
 from every letter's attribution and transcription review.
 
+## Standard catalogue names
+
+Use a single preferred name for display, separate from what a letter actually says. A person
+review can include `"standardize_display": true` to enable its name and exact aliases as
+catalogue labels. Matching ignores case and repeated whitespace, but does not guess from
+similar spelling, initials or folder membership. Add each intended variant explicitly.
+Use the returned `person_id` and a complete updated record for later authority changes.
+
+The current collection's user-supplied preferred forms are **Percy Shufeldt**, **Robert W.
+Shufeldt**, **W.E. Clyde Todd**, and **George Miksch Sutton**. Their local authority records
+include the known filename abbreviations and saved name variants. `C. M. Sutton` is not an
+alias for George Miksch Sutton; its inferred attribution still needs checking.
+
+Enabled aliases apply to existing and future exports from that store, so transcription need
+not be rerun. Sender, recipient and attributed-author display labels use an explicit person
+link where present, otherwise a unique enabled alias in the reading/normalized value. Only
+when there is no reading may the filename supply a labelled hint. Ambiguous or conflicting
+alias matches are left unchanged. Unknown names remain unknown. No automatic person links,
+relationship matches, metadata approval or handwriting context are created by display aliases.
+
+Viewer labels/search, readable TXT catalogue details, and CSV `sender_display` and
+`recipient_display` use this layer. Original values, normalized proposals, evidence, page text
+and certainty stay intact. `catalogue_names` in JSON records each label's authority and basis.
+The viewer keeps **Filename hint · unverified**, **inferred** and other uncertainty labels.
+
+## Confirm a catalogue date
+
+Two-digit years remain excluded from automatic chronology. After checking the intended date,
+append a letter review with its current `base_revision`, a source explaining the confirmation,
+and the following field:
+
+```json
+"catalogue_date": {"value": "1899-08-07", "precision": "day"}
+```
+
+This must agree with the current normalized date/precision. If those are wrong, correct the
+date metadata in the same review, preserving its actual source reading and evidence. The
+confirmation saves the date evidence and review event and affects catalogue sorting only;
+relationship matching still follows the conservative document-date policy. It does not mark
+the whole document reviewed. Date or page corrections, changed scans and new service revisions
+invalidate the confirmation. Name-only corrections do not.
+
+Re-export after catalogue changes. Remember that the CLI `export` command republishes reader
+files beside scans when publication was previously enabled for that store. For local-only
+preparation, use `correspondence.exports.export_all` directly, without `publication.publish_text`.
+The 2026-10-23 local repair and its backups are under ignored `local/catalogue-repair-20261023/`;
+`local/standardize_catalogue_20261023.py` performs only local review/export work.
+
 ## Link decisions
 
 ```json

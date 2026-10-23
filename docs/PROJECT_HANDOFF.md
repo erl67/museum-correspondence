@@ -29,6 +29,75 @@ during this resumed work.
 
 ## Responsibilities
 
+### Intentional public viewer — 2026-10-23
+
+At the user's request, Code.gs now enables PUBLIC_MODE and the manifest uses USER_DEPLOYING /
+ANYONE_ANONYMOUS, retaining drive.readonly. This supersedes the earlier reader-only deployment
+guidance. The existing supplied IDs, catalogue-name display and date confirmations are preserved.
+Public mode deliberately skips the reader gate: owner Drive access is not visitor authorization.
+Every RPC filters to active:true records; retired IDs/images and connections to retired targets
+are refused/withheld. Explicit response field lists retain reading content, uncertainty and
+metadata evidence while withholding provenance/prompts/profiles, partial raw responses, internal
+review reasons, authority sources/IDs, prior scan paths, Drive IDs and global diagnostics.
+Public search uses the same filtered fields. All source data/history remains intact.
+
+Public image replies omit direct Drive links but retain original verified bytes, sequential
+loading, membership, path, MIME, size and hash checks. Export errors no longer return parser
+excerpts or Drive exceptions. A lock/cache counter sheds excess public load before Drive reads
+(120 requests / 60 image requests per minute shared by all visitors); eviction may reset it.
+It is not authentication, a hard quota or denial-of-service protection. Anonymous traffic can
+still exhaust owner quotas. The current design is not validated for 10,000 letters.
+
+Staff must copy Code.gs, Viewer.html and appsscript.json, then deploy a new version as Me /
+Anyone and test signed out. Existing JSON works; the prior catalogue update still requires its
+refreshed JSON for standard-name/date data. Keep raw JSON private to preserve the response
+filtering. End public access by archiving all public deployments; PUBLIC_MODE:false alone
+does not restrict an owner-executed deployment. Restricted mode requires USER_ACCESSING and
+an appropriate audience as documented in the viewer README.
+
+Offline verification: 114 Python and 50 viewer tests passed, zero failures/skips. No Drive
+requests, uploads, sharing changes, deployments, commits or pushes occurred. Native Google
+authorization/rendering and deployed access remain unverified. Other chats' catalogue changes
+and Python work were preserved.
+An additional offline smoke check of the current local export preserved all 21 active letters,
+44 scans and 44 transcription pages across two folders, and refused the two retired records.
+The check first compared JSON property order unnecessarily; after using structural comparison,
+all original page text/annotations and metadata matched. The ignored deployment copies of all
+three source files and SETUP.txt were refreshed with content-hashed pre-update backups; its
+prepared JSON was left unchanged.
+
+### Catalogue corrections and standard names — 2026-10-23
+
+The viewer now excludes retired groupings from catalogue/search/navigation while preserving
+direct historical links with links to active letters sharing the scans. The two retired
+one-page groups caused the duplicate August 7, 1899 and December 9, 1923 entries. The complete
+August letter had a saved `Aug 7 - '99` date; the four-digit-year guard excluded it from sorting.
+A separate revision-bound catalogue-date confirmation records the user's confirmation of
+1899-08-07 without rewriting that source date or changing relationship matching policy.
+
+`catalogue.py` resolves explicitly enabled, unique authority aliases for display only.
+Original normalized proposals, source text/evidence, attribution certainty and person links
+remain unchanged. The local full-collection store now contains the four user-supplied standard
+names (Percy Shufeldt; Robert W. Shufeldt; W.E. Clyde Todd; George Miksch Sutton), yielding
+49 standard name labels across 21 active letters. The inferred C. M. Sutton / [CMS] reading
+on 1923-12-13 remains unresolved. Future exports reuse these aliases; new/ambiguous variants
+need explicit staff decisions. No alias is promoted into approved handwriting context.
+
+The original journal prefix, results, documents, inventory/page order, review states and quota
+bytes were verified unchanged. Four authority reviews and one catalogue-date review were
+appended. `local/full-exports` and the prepared files in `local/viewer-deployment` were refreshed.
+The fixture store/export was left alone. Backups and verification are in
+`local/catalogue-repair-20261023/`; the repeatable local script is
+`local/standardize_catalogue_20261023.py`.
+
+To update the live viewer, both Apps Script source files and the contents of its existing
+viewer JSON file need replacing, preserving its Drive ID, followed by a new deployment version.
+Nothing was published to Drive or deployed in this task; the local script deliberately calls
+`export_all` directly because CLI export remembers prior publication and would write beside scans.
+Offline results: **114 Python and 41 viewer tests passed, no failures or skips** after fixing
+a renderer variable-shadowing failure. Source scans were untouched. No service calls, upload,
+sharing changes, deployment, commit or push occurred.
+
 ### Main viewer settings filled — 2026-10-23
 
 At the user's explicit request, all three Drive settings are now populated in the main
@@ -192,7 +261,7 @@ Offline verification: **100 Python and 18 viewer tests passed, no failures or sk
 | review / profiles | Persistent human correction/identity/link layers and explicit frozen handwriting context |
 | relationships | Local explained candidates, unresolved references, decisions and graph validation |
 | exports / cli | Offline TXT/CSV/JSON/viewer output and documented commands |
-| apps_script/viewer | Read-only user-authorized Drive viewer, search and ordered scans |
+| apps_script/viewer | Read-only public or reader-authorized Drive viewer, search and ordered scans |
 
 No sibling imports, server, plugin framework, provider benchmark or hidden background worker.
 

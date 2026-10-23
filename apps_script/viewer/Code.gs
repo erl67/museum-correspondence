@@ -1,16 +1,45 @@
 /** Read-only correspondence viewer. Configure IDs; never change sharing here. */
 const SETTINGS = Object.freeze({
-  ACCESS_FILE_ID: '1dwIdqRS_urGeGyI-E9pUhMrh0AmSCnnP', // Reader must have access to the viewer JSON file.
+  PUBLIC_MODE: true, // Intentionally publish current letters; deploy as Me / Anyone.
+  ACCESS_FILE_ID: '1dwIdqRS_urGeGyI-E9pUhMrh0AmSCnnP', // Used only in restricted USER_ACCESSING mode.
   EXPORT_FILE_ID: '1dwIdqRS_urGeGyI-E9pUhMrh0AmSCnnP', // Viewer JSON file supplied by the user.
   SCAN_ROOT_FOLDER_ID: '1AvEal1n0hiB_MCuDbplb0RmhCeGFi8L0', // Collection folder containing all scan subfolders.
   MAX_EXPORT_BYTES: 10 * 1024 * 1024,
   MAX_IMAGE_BYTES: 12 * 1024 * 1024,
-  MAX_LETTER_IMAGE_BYTES: 24 * 1024 * 1024
+  MAX_LETTER_IMAGE_BYTES: 24 * 1024 * 1024,
+  PUBLIC_REQUESTS_PER_MINUTE: 120, // Shared by all visitors, including page opens.
+  PUBLIC_IMAGES_PER_MINUTE: 60
 });
 
-function gate_() {
-  if (!SETTINGS.ACCESS_FILE_ID || !SETTINGS.EXPORT_FILE_ID) {
+// Best-effort load shedding, not visitor authentication or denial-of-service protection.
+// Cache eviction can reset these counters. Never cache private letters or image bytes.
+function publicBudget_(imageRequest) {
+  const busy = 'Viewer is busy. Please wait a minute and reload.';
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(100)) throw new Error(busy);
+  try {
+    const cache = CacheService.getScriptCache();
+    const key = 'public-viewer-v1:' + Math.floor(Date.now() / 60000);
+    const counts = JSON.parse(cache.get(key) || '{"requests":0,"images":0}');
+    if (counts.requests >= SETTINGS.PUBLIC_REQUESTS_PER_MINUTE ||
+        (imageRequest && counts.images >= SETTINGS.PUBLIC_IMAGES_PER_MINUTE)) throw new Error(busy);
+    counts.requests++;
+    if (imageRequest) counts.images++;
+    cache.put(key, JSON.stringify(counts), 70);
+  } catch (error) {
+    throw new Error(busy);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function gate_(imageRequest) {
+  if (!SETTINGS.EXPORT_FILE_ID || (!SETTINGS.PUBLIC_MODE && !SETTINGS.ACCESS_FILE_ID)) {
     throw new Error('Viewer is not configured. Set the access-gate and export file IDs.');
+  }
+  if (SETTINGS.PUBLIC_MODE) {
+    publicBudget_(imageRequest);
+    return; // Owner's Drive access is not visitor authorization; publication is intentional.
   }
   try {
     const file = DriveApp.getFileById(SETTINGS.ACCESS_FILE_ID);
@@ -21,21 +50,87 @@ function gate_() {
   }
 }
 
-function bundle_() {
-  gate_();
-  const file = DriveApp.getFileById(SETTINGS.EXPORT_FILE_ID);
-  if (file.isTrashed() || file.getSize() > SETTINGS.MAX_EXPORT_BYTES) {
-    throw new Error('Viewer export is removed or exceeds the 10 MiB limit.');
+function bundle_(imageRequest) {
+  gate_(imageRequest);
+  let value, token;
+  try {
+    const file = DriveApp.getFileById(SETTINGS.EXPORT_FILE_ID);
+    if (file.isTrashed() || file.getSize() > SETTINGS.MAX_EXPORT_BYTES) throw new Error('Unavailable');
+    token = file.getId() + ':' + file.getLastUpdated().getTime() + ':' + file.getSize();
+    if (SETTINGS.PUBLIC_MODE) token = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, token)
+      .map(byte => ('0' + (byte & 255).toString(16)).slice(-2)).join('');
+    value = JSON.parse(file.getBlob().getDataAsString('UTF-8'));
+  } catch (error) {
+    // Do not return Drive exceptions, file IDs, or malformed JSON excerpts to visitors.
+    throw new Error('Viewer export is unavailable. The maintainer must check access, valid JSON and the 10 MiB limit.');
   }
-  const token = file.getId() + ':' + file.getLastUpdated().getTime() + ':' + file.getSize();
-  const value = JSON.parse(file.getBlob().getDataAsString('UTF-8'));
-  if (value.schema_version !== 1 || !Array.isArray(value.letters)) {
+  if (!value || value.schema_version !== 1 || !Array.isArray(value.letters) ||
+      value.letters.some(letter => !letter || typeof letter.letter_id !== 'string' || !Array.isArray(letter.scans))) {
     throw new Error('Unsupported viewer export schema.');
   }
   if (new Set(value.letters.map(x => x.letter_id)).size !== value.letters.length) {
     throw new Error('Duplicate archival IDs in export.');
   }
+  // Enforce on the server for every RPC, including guessed historical IDs/image requests.
+  if (SETTINGS.PUBLIC_MODE) value.letters = value.letters.filter(letter => letter.active === true);
   return { value, token };
+}
+
+function publicScalars_(source, keys) {
+  const result = {};
+  for (const key of keys) {
+    const value = (source || {})[key];
+    if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) result[key] = value;
+  }
+  return result;
+}
+
+function publicEvidence_(items) {
+  return (items || []).map(item => publicScalars_(item, ['image_id', 'quote']));
+}
+
+function publicLetter_(letter) {
+  // Explicit publication fields: new export fields must not become public by accident.
+  const result = publicScalars_(letter, ['letter_id', 'active', 'execution', 'grouping',
+    'metadata_review', 'transcription_review', 'relationship_review', 'summary']);
+  result.hints = publicScalars_(letter.hints, ['sender', 'recipient', 'date', 'folder']);
+  result.metadata = {};
+  for (const name of ['sender', 'recipient', 'date', 'place_written', 'addresses', 'affiliations',
+      'language', 'document_type', 'attributed_author', 'physical_hand']) {
+    const field = (letter.metadata || {})[name];
+    if (field) result.metadata[name] = { ...publicScalars_(field, ['value', 'normalized', 'certainty', 'precision']),
+      evidence: publicEvidence_(field.evidence) };
+  }
+  result.catalogue_names = {};
+  for (const name of ['sender', 'recipient', 'attributed_author']) {
+    const label = (letter.catalogue_names || {})[name];
+    if (label) result.catalogue_names[name] = publicScalars_(label, ['name', 'basis']);
+  }
+  if (chronology_(letter).sort_basis === 'catalogue confirmation') {
+    result.catalogue_date = { ...publicScalars_(letter.catalogue_date, ['value', 'precision']), source: 'Staff confirmation' };
+  }
+  result.pages = (letter.pages || []).map(page => ({ ...publicScalars_(page, ['image_id', 'status', 'text']),
+    annotations: (page.annotations || []).map(note => publicScalars_(note, ['kind', 'text'])) }));
+  result.translations = (letter.translations || []).map(item => publicScalars_(item, ['image_id', 'language', 'text']));
+  result.notes = (letter.notes || []).filter(note => typeof note === 'string');
+  result.scans = letter.scans.map(scan => ({ ...publicScalars_(scan,
+    ['image_id', 'filename', 'path', 'folder', 'order', 'status']),
+    mapping_status: scan.drive_file_id ? 'mapped' : SETTINGS.SCAN_ROOT_FOLDER_ID ? 'folder_lookup' : 'missing_mapping' }));
+  return result;
+}
+
+function publicConnections_(value, id) {
+  const ids = new Set(value.letters.map(letter => letter.letter_id));
+  return {
+    links: (value.links || []).filter(link => ids.has(link.from_letter) && ids.has(link.to_letter) &&
+      (link.from_letter === id || link.to_letter === id)).map(link => ({
+        ...publicScalars_(link, ['from_letter', 'to_letter', 'relation', 'status', 'needs_rematch', 'decision_needs_review']),
+        evidence: publicEvidence_(link.evidence),
+        contradictions: (link.contradictions || []).filter(text => typeof text === 'string') })),
+    unresolved: (value.unresolved || []).filter(ref => ref.from_letter === id).map(ref => ({
+      from_letter: id, reference: publicScalars_(ref.reference, ['description']) })),
+    warnings: []
+  };
 }
 
 function doGet(e) {
@@ -52,9 +147,10 @@ function doGet(e) {
 function matchingLetters_(letters, query) {
   const q = String(query || '').trim().toLocaleLowerCase();
   if (q.length > 200) throw new Error('Search is limited to 200 characters.');
-  return letters.filter(letter => {
+  return letters.filter(source => {
+    const letter = SETTINGS.PUBLIC_MODE ? publicLetter_(source) : source;
     const meta = letter.metadata || {};
-    const text = [letter.letter_id, JSON.stringify(letter.hints || {}), ...['sender', 'recipient', 'date'].map(k =>
+    const text = [letter.letter_id, JSON.stringify(letter.hints || {}), JSON.stringify(letter.catalogue_names || {}), ...['sender', 'recipient', 'date'].map(k =>
       JSON.stringify(meta[k] || {})), ...(letter.pages || []).map(p =>
       p.text + ' ' + (p.annotations || []).map(a => a.text).join(' ')),
       folderOf_(letter), letter.partial_response || ''].join(' ');
@@ -81,6 +177,12 @@ function chronology_(letter) {
   // Match the export's conservative date policy; never expand ambiguous years.
   const normalized = calendarDate_(date.normalized);
   const lengths = { year: 4, month: 7, day: 10 };
+  const confirmed = letter.catalogue_date;
+  if (confirmed && confirmed.source && confirmed.review_event && normalized &&
+      confirmed.value === normalized && confirmed.precision === date.precision &&
+      normalized.length === lengths[date.precision]) {
+    return { sort_date: normalized, sort_basis: 'catalogue confirmation' };
+  }
   if (normalized && normalized.length === lengths[date.precision] &&
       ['explicit', 'inferred'].includes(date.certainty) &&
       (String(date.value || '').match(/\b\d{4}\b/g) || []).includes(normalized.slice(0, 4))) {
@@ -97,28 +199,30 @@ function compareLetters_(a, b) {
 }
 
 function letterRow_(letter) {
-  return { letter_id: letter.letter_id, metadata: letter.metadata, hints: letter.hints,
+  const display = SETTINGS.PUBLIC_MODE ? publicLetter_(letter) : letter;
+  return { letter_id: letter.letter_id, metadata: display.metadata, hints: display.hints,
+    catalogue_names: display.catalogue_names, catalogue_date: display.catalogue_date,
     execution: letter.execution, active: letter.active, page_count: (letter.scans || []).length,
     ...chronology_(letter) };
 }
 
 function searchLetters(query) {
   const { value } = bundle_();
-  const matches = matchingLetters_(value.letters, query).sort(compareLetters_);
+  const matches = matchingLetters_(value.letters.filter(letter => letter.active !== false), query).sort(compareLetters_);
   return { total: matches.length, limited: matches.length > 100,
     letters: matches.slice(0, 100).map(letterRow_) };
 }
 
 function listFolders(query) {
   const { value } = bundle_();
-  const matches = matchingLetters_(value.letters, query);
+  const matches = matchingLetters_(value.letters.filter(letter => letter.active !== false), query);
   const folders = new Map();
   for (const letter of matches) {
     const name = folderOf_(letter);
     if (!folders.has(name)) folders.set(name, []);
     folders.get(name).push(letter);
   }
-  // The catalogue returns every row, including unprocessed and retired records.
+  // Retired groupings remain accessible by ID only in restricted reader mode.
   // Only lightweight metadata is sent; page text and images load on the letter view.
   return { total: matches.length, folders: [...folders.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -135,17 +239,20 @@ function loadLetter(id) {
   const { value, token } = bundle_();
   const letter = selectLetter_(value, String(id));
   const folder = folderOf_(letter);
-  const siblings = value.letters.filter(item => folderOf_(item) === folder).sort(compareLetters_);
+  const siblings = value.letters.filter(item => item.active !== false && folderOf_(item) === folder).sort(compareLetters_);
   const index = siblings.findIndex(item => item.letter_id === letter.letter_id);
-  const displayLetter = { ...letter, scans: letter.scans.map(scan => ({ ...scan,
+  const displayLetter = SETTINGS.PUBLIC_MODE ? publicLetter_(letter) : { ...letter, scans: letter.scans.map(scan => ({ ...scan,
     mapping_status: !scan.drive_file_id && SETTINGS.SCAN_ROOT_FOLDER_ID ? 'folder_lookup' : scan.mapping_status })) };
-  return { letter: displayLetter, token,
+  const currentScanLetters = letter.active === false ? value.letters.filter(item => item.active !== false &&
+    item.scans.some(scan => letter.scans.some(old => old.image_id === scan.image_id))).map(letterRow_) : [];
+  const connections = SETTINGS.PUBLIC_MODE ? publicConnections_(value, id) : {
+    links: value.links.filter(link => link.from_letter === id || link.to_letter === id),
+    unresolved: value.unresolved.filter(ref => ref.from_letter === id), warnings: value.warnings || [] };
+  return { letter: displayLetter, token, currentScanLetters, publicMode: SETTINGS.PUBLIC_MODE,
     navigation: { folder, position: index + 1, total: siblings.length,
       previous: index > 0 ? letterRow_(siblings[index - 1]) : null,
-      next: index + 1 < siblings.length ? letterRow_(siblings[index + 1]) : null },
-    links: value.links.filter(link => link.from_letter === id || link.to_letter === id),
-    unresolved: value.unresolved.filter(ref => ref.from_letter === id),
-    warnings: value.warnings || [] };
+      next: index >= 0 && index + 1 < siblings.length ? letterRow_(siblings[index + 1]) : null },
+    ...connections };
 }
 
 function singleDriveChild_(iterator, path) {
@@ -180,7 +287,8 @@ function scanByPath_(scan) {
 }
 
 function loadImage(request) {
-  const { value, token } = bundle_();
+  const { value, token } = bundle_(true);
+  if (!request || typeof request !== 'object') throw new Error('Invalid image request.');
   if (token !== request.token) return { status: 'changed', message: 'Export changed; reload this letter.' };
   const letter = selectLetter_(value, request.letter_id);
   const scan = letter.scans.find(image => image.image_id === request.image_id);
@@ -214,7 +322,7 @@ function loadImage(request) {
       .map(byte => ('0' + (byte & 255).toString(16)).slice(-2)).join('');
     if (sha !== scan.sha256) return { status: 'changed', message: 'Drive scan hash differs from the export; review the scan path or mapping.' };
     return { status: 'ready', data: 'data:image/jpeg;base64,' + Utilities.base64Encode(bytes),
-      url: 'https://drive.google.com/file/d/' + encodeURIComponent(file.getId()) + '/view' };
+      url: SETTINGS.PUBLIC_MODE ? '' : 'https://drive.google.com/file/d/' + encodeURIComponent(file.getId()) + '/view' };
   } catch (error) {
     // Drive deliberately hides whether an inaccessible ID exists. Do not claim deletion.
     return { status: 'inaccessible', message: 'Drive scan or its collection folder cannot be read by this account. It may have been removed; Drive does not distinguish these cases.' };

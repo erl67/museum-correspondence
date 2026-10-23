@@ -27,9 +27,10 @@ function fixture() {
 }
 
 function context(bundle = fixture(), options = {}) {
-  let gateReads = 0, imageReads = 0, folderReads = 0;
+  let gateReads = 0, imageReads = 0, folderReads = 0, exportReads = 0, lockReleases = 0;
+  const cache = options.cache || new Map();
   const lookups = [];
-  const blob = { getDataAsString: () => JSON.stringify(bundle), getBytes: () => [...bytes] };
+  const blob = { getDataAsString: () => options.exportText === undefined ? JSON.stringify(bundle) : options.exportText, getBytes: () => [...bytes] };
   const file = { getName: () => 'synthetic', isTrashed: () => false, getId: () => 'export',
     getSize: () => JSON.stringify(bundle).length, getLastUpdated: () => new Date(1000),
     getBlob: () => blob };
@@ -53,9 +54,15 @@ function context(bundle = fixture(), options = {}) {
   const folderTree = options.folderTree || { folders: { folder: [{ files: {
     'img_B.jpg': ['resolved_drive_img_B'], 'img_A.jpg': ['resolved_drive_img_A'] } }] } };
   const sandbox = {
+    Date: class extends Date { static now() { return options.now === undefined ? 100000 : options.now; } },
+    LockService: { getScriptLock: () => ({ tryLock: () => !options.lockBusy, releaseLock: () => { lockReleases++; } }) },
+    CacheService: { getScriptCache: () => ({ get: key => {
+      if (options.cacheError) throw Error('internal cache exception');
+      return cache.get(key) || null;
+    }, put: (key, value) => cache.set(key, value) }) },
     DriveApp: { getFileById(id) {
       if (id === 'gate') { gateReads++; if (options.deny) throw Error('denied'); return file; }
-      if (id === 'export') return file;
+      if (id === 'export') { exportReads++; if (options.exportError) throw Error('PRIVATE Drive ID and detail'); return file; }
       if (options.imageError) throw Error('hidden existence');
       return { ...image, getId: () => id, ...options.image };
     }, getFolderById(id) {
@@ -70,9 +77,10 @@ function context(bundle = fixture(), options = {}) {
   };
   vm.createContext(sandbox);
   vm.runInContext(server.replace(/\bACCESS_FILE_ID:\s*'[^']*'/, "ACCESS_FILE_ID: 'gate'")
+    .replace(/\bPUBLIC_MODE:\s*true/, 'PUBLIC_MODE: ' + Boolean(options.publicMode))
     .replace(/\bEXPORT_FILE_ID:\s*'[^']*'/, "EXPORT_FILE_ID: 'export'")
     .replace(/\bSCAN_ROOT_FOLDER_ID:\s*'[^']*'/, "SCAN_ROOT_FOLDER_ID: '" + (options.scanRoot || '') + "'"), sandbox);
-  return { sandbox, lookups, counts: () => ({ gateReads, imageReads, folderReads }) };
+  return { sandbox, lookups, cache, counts: () => ({ gateReads, imageReads, folderReads, exportReads, lockReleases }) };
 }
 
 test('search sender recipient date and saved text without image reads', () => {
@@ -349,14 +357,13 @@ function catalogueFixture() {
   return bundle;
 }
 
-test('folder catalogue includes all letters chronologically without loading scans', () => {
+test('folder catalogue includes active letters chronologically without loading scans', () => {
   const bundle = catalogueFixture(), c = context(bundle), result = c.sandbox.listFolders('');
   assert.deepEqual(Array.from(result.folders, f => f.name), ['A & B', 'Z']);
-  assert.deepEqual(Array.from(result.folders[0].letters, l => l.letter_id), ['hint', 'early', 'late', 'same_date', 'ambiguous', 'unknown']);
+  assert.deepEqual(Array.from(result.folders[0].letters, l => l.letter_id), ['hint', 'early', 'late', 'ambiguous', 'unknown']);
   assert.equal(result.folders[0].letters[0].sort_basis, 'filename hint');
   assert.equal(result.folders[0].letters[1].sort_date, '1899-05');
-  assert.equal(result.folders[0].letters[3].active, false);
-  assert.equal(result.folders[0].letters[4].sort_basis, 'unknown');
+  assert.equal(result.folders[0].letters[3].sort_basis, 'unknown');
   assert.equal(result.folders[0].letters[0].pages, undefined);
   assert.equal(c.counts().imageReads, 0);
   assert.equal(c.counts().gateReads, 1);
@@ -368,8 +375,8 @@ test('folder catalogue includes all letters chronologically without loading scan
 
 test('folder search covers folders and saved text with no truncation, and root is explicit', () => {
   const c = context(catalogueFixture());
-  assert.equal(c.sandbox.listFolders('a & b').total, 6);
-  assert.equal(c.sandbox.listFolders('café').total, 7);
+  assert.equal(c.sandbox.listFolders('a & b').total, 5);
+  assert.equal(c.sandbox.listFolders('café').total, 6);
   assert.equal(c.sandbox.listFolders('missing phrase').folders.length, 0);
   assert.throws(() => c.sandbox.listFolders('x'.repeat(201)), /200 characters/);
   const bundle = fixture(); bundle.letters[0].scans = [];
@@ -393,7 +400,7 @@ test('previous and next follow the complete folder order and stop at its boundar
   const { sandbox } = context(catalogueFixture());
   const middle = sandbox.loadLetter('early').navigation;
   assert.equal(middle.previous.letter_id, 'hint'); assert.equal(middle.next.letter_id, 'late');
-  assert.equal(middle.position, 2); assert.equal(middle.total, 6);
+  assert.equal(middle.position, 2); assert.equal(middle.total, 5);
   assert.equal(sandbox.loadLetter('hint').navigation.previous, null);
   assert.equal(sandbox.loadLetter('unknown').navigation.next, null);
   const single = sandbox.loadLetter('other').navigation;
@@ -407,7 +414,7 @@ test('home loads collapsed folders automatically; search and return links expand
   assert.equal(f.ids.results.children.length, 2);
   assert.ok(f.ids.results.children.every(n => n.tag === 'details' && !n.open));
   const text = allNodes(f.ids.results).map(n => n.textContent).join('\n');
-  assert.match(text, /Hint sender/); assert.match(text, /Filename hint · unverified/); assert.match(text, /Retired record/);
+  assert.match(text, /Hint sender/); assert.match(text, /Filename hint · unverified/); assert.doesNotMatch(text, /Retired record/);
   const returned = frontend({ folder: 'A & B' }); returned.catalogueCalls[0].success(result);
   assert.equal(returned.ids.results.children[0].open, true); assert.equal(returned.ids.results.children[1].open, false);
   f.sandbox.loadFolders('old'); f.sandbox.loadFolders('new');
@@ -475,6 +482,60 @@ test('normalized names and ISO dates are consistent across catalogue, accessible
   assert.equal(JSON.stringify(bundle), original);
   assert.equal(c.sandbox.searchLetters('Alex. BENNETT').total, 1);
   assert.equal(c.sandbox.searchLetters('Alexandra Bennett').total, 1);
+});
+
+test('catalogue authority names are searchable and preserve inferred and filename labels', () => {
+  const bundle = fixture(), letter = bundle.letters[0];
+  letter.metadata.sender = { value: 'A.', normalized: 'A.', certainty: 'inferred' };
+  letter.metadata.recipient = { value: null, normalized: null, certainty: 'unknown' };
+  letter.hints = { recipient: 'B' };
+  letter.catalogue_names = {
+    sender: { name: 'Alice Example', basis: 'metadata', source: 'Staff' },
+    recipient: { name: 'Bob Example', basis: 'filename hint', source: 'Staff' }
+  };
+  const c = context(bundle), f = frontend();
+  assert.equal(c.sandbox.searchLetters('Alice Example').total, 1);
+  assert.equal(c.sandbox.searchLetters('A.').total, 1);
+  f.catalogueCalls[0].success(c.sandbox.listFolders(''));
+  const text = allNodes(f.ids.results).map(n => n.textContent).join('\n');
+  assert.match(text, /Alice Example/); assert.match(text, /inferred/);
+  assert.match(text, /Bob Example/); assert.match(text, /Filename hint · unverified/);
+  f.sandbox.renderLetter(c.sandbox.loadLetter('ltr_one'));
+  const panel = f.ids.record.children.find(n => n.className === 'panel');
+  assert.match(allNodes(panel).map(n => n.textContent).join('\n'), /Filename hint · unverified/);
+  const evidence = f.ids.record.children.find(n => n.className === 'provenance');
+  assert.equal(JSON.parse(evidence.children.find(n => n.tag === 'pre').textContent).metadata.sender.value, 'A.');
+});
+
+test('reviewed catalogue date sorts a short year without loosening automatic chronology', () => {
+  const bundle = catalogueFixture(), letter = bundle.letters.find(l => l.letter_id === 'ambiguous');
+  letter.catalogue_date = { value: '1899-05-01', precision: 'day', source: 'Staff confirmation', review_event: 'evt_synthetic' };
+  const c = context(bundle), f = frontend();
+  const rows = c.sandbox.listFolders('').folders[0].letters;
+  assert.deepEqual(Array.from(rows, l => l.letter_id), ['hint', 'early', 'ambiguous', 'late', 'unknown']);
+  assert.equal(rows[2].sort_basis, 'catalogue confirmation');
+  f.catalogueCalls[0].success(c.sandbox.listFolders(''));
+  assert.match(allNodes(f.ids.results).map(n => n.textContent).join('\n'), /Catalogue date confirmed/);
+  for (const confirmed of [null, { ...letter.catalogue_date, value: '1999-05-01' },
+    { ...letter.catalogue_date, precision: 'year' }, { ...letter.catalogue_date, review_event: null }]) {
+    assert.equal(c.sandbox.chronology_({ ...letter, catalogue_date: confirmed }).sort_basis, 'unknown');
+  }
+});
+
+test('retired single-page groupings stay accessible but are excluded from search and navigation', () => {
+  const bundle = fixture(), active = bundle.letters[0];
+  bundle.letters.push({ ...active, letter_id: 'retired_page', active: false,
+    scans: [active.scans[0]], pages: [], metadata: {}, hints: { sender: 'Old typo' } });
+  const c = context(bundle), f = frontend();
+  assert.equal(c.sandbox.listFolders('').total, 1);
+  assert.equal(c.sandbox.searchLetters('Old typo').total, 0);
+  assert.equal(c.sandbox.loadLetter('ltr_one').navigation.total, 1);
+  const retired = c.sandbox.loadLetter('retired_page');
+  assert.equal(retired.currentScanLetters[0].letter_id, 'ltr_one');
+  assert.equal(retired.navigation.previous, null); assert.equal(retired.navigation.next, null);
+  f.sandbox.renderLetter(retired);
+  assert.match(allNodes(f.ids.record).map(n => n.textContent).join('\n'), /retired grouping/);
+  assert.ok(allNodes(f.ids.record).some(n => n.tag === 'a' && n.textContent.includes('Open current letter') && n.href.endsWith('?letter=ltr_one')));
 });
 
 test('display falls back to original readings and preserves partial dates and uncertainty', () => {
@@ -601,9 +662,137 @@ test('unresolved reference and absent transcription displayed separately', () =>
   assert.match(text, /No Google Drive mapping/);
 });
 
-test('manifest permits read-only Drive and USER_ACCESSING only', () => {
+test('public deployment runs as deployer with anonymous access and read-only Drive only', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, 'appsscript.json'), 'utf8'));
   assert.deepEqual(manifest.oauthScopes, ['https://www.googleapis.com/auth/drive.readonly']);
-  assert.equal(manifest.webapp.executeAs, 'USER_ACCESSING');
+  assert.equal(manifest.webapp.executeAs, 'USER_DEPLOYING');
+  assert.equal(manifest.webapp.access, 'ANYONE_ANONYMOUS');
+  assert.match(server, /PUBLIC_MODE:\s*true/);
   assert.doesNotMatch(server, /setSharing|setTrashed|createFile|UrlFetchApp/);
+});
+
+test('public RPCs exclude retired and unspecified-active letters, even through direct IDs', () => {
+  const bundle = catalogueFixture();
+  bundle.letters.push({ ...bundle.letters[0], letter_id: 'unspecified', active: undefined });
+  const c = context(bundle, { publicMode: true, deny: true });
+  assert.equal(c.sandbox.listFolders('').total, 6);
+  assert.equal(c.sandbox.searchLetters('same_date').total, 0);
+  const token = c.sandbox.loadLetter('late').token;
+  assert.match(token, /^[a-f0-9]{64}$/);
+  assert.equal(c.sandbox.loadLetter('late').navigation.next.letter_id, 'ambiguous');
+  for (const id of ['same_date', 'unspecified']) {
+    assert.throws(() => c.sandbox.loadLetter(id), /absent/);
+    assert.throws(() => c.sandbox.loadImage({ token, letter_id: id, image_id: 'img_B' }), /absent/);
+  }
+  assert.equal(c.counts().gateReads, 0);
+  assert.equal(c.counts().imageReads, 0);
+  assert.equal(bundle.letters.length, 8); // Stored history is unchanged.
+});
+
+test('public responses and search exclude diagnostics at every nested boundary', () => {
+  const bundle = fixture(), letter = bundle.letters[0], privateText = 'PRIVATE_SENTINEL';
+  letter.provenance = { prompt: privateText, handwriting_profile: privateText };
+  letter.partial_response = privateText; letter.review_reasons = [privateText]; letter.future_field = privateText;
+  letter.hints = { sender: 'Hint', folder: 'folder', internal: privateText };
+  letter.metadata.sender.internal = privateText;
+  letter.metadata.sender.evidence = [{ image_id: 'img_B', quote: 'A', reviewer: privateText }];
+  letter.catalogue_names = { sender: { name: 'Standard sender', basis: 'metadata', source: privateText, authority_id: privateText } };
+  letter.metadata.date.value = "May 1, '99";
+  letter.catalogue_date = { value: '1899-05-01', precision: 'day', source: privateText, review_event: privateText };
+  letter.scans[0].previous_paths = [privateText]; letter.scans[0].future_field = privateText;
+  letter.pages[0].internal = privateText;
+  letter.pages[0].annotations = [{ kind: 'margin', text: 'Keep annotation', internal: privateText }];
+  letter.translations = [{ image_id: 'img_B', language: 'en', text: 'Keep translation', internal: privateText }];
+  bundle.warnings = [privateText];
+  const before = JSON.stringify(bundle), c = context(bundle, { publicMode: true });
+  const result = c.sandbox.loadLetter('ltr_one');
+  for (const response of [result, c.sandbox.listFolders(''), c.sandbox.searchLetters('')]) {
+    assert.doesNotMatch(JSON.stringify(response), /PRIVATE_SENTINEL|synthetic_drive_|previous_paths|sha256/);
+  }
+  assert.equal(c.sandbox.searchLetters(privateText).total, 0);
+  assert.equal(c.sandbox.searchLetters('Standard sender').total, 1);
+  assert.equal(c.sandbox.listFolders('').folders[0].letters[0].sort_basis, 'catalogue confirmation');
+  assert.equal(result.letter.catalogue_date.source, 'Staff confirmation');
+  assert.equal(result.letter.pages[0].text, letter.pages[0].text);
+  assert.equal(result.letter.pages[0].annotations[0].text, 'Keep annotation');
+  assert.equal(result.letter.translations[0].text, 'Keep translation');
+  assert.equal(result.letter.metadata.sender.evidence[0].quote, 'A');
+  assert.equal(JSON.stringify(bundle), before);
+});
+
+test('public connections cannot reveal retired targets or internal decisions', () => {
+  const bundle = fixture();
+  bundle.letters.push({ ...bundle.letters[0], letter_id: 'retired', active: false },
+    { ...bundle.letters[0], letter_id: 'current' });
+  bundle.links = ['retired', 'current'].map(id => ({ from_letter: 'ltr_one', to_letter: id,
+    relation: 'reply_to', status: 'candidate', decision: 'PRIVATE_SENTINEL',
+    evidence: [{ image_id: 'img_B', quote: 'Document evidence', private: 'PRIVATE_SENTINEL' }] }));
+  bundle.unresolved = [{ from_letter: 'ltr_one', reference: { description: 'Unknown letter', private: 'PRIVATE_SENTINEL' } },
+    { from_letter: 'retired', reference: { description: 'PRIVATE_SENTINEL' } }];
+  const result = context(bundle, { publicMode: true }).sandbox.loadLetter('ltr_one');
+  assert.equal(result.links.length, 1); assert.equal(result.links[0].to_letter, 'current');
+  assert.equal(result.unresolved.length, 1);
+  assert.doesNotMatch(JSON.stringify(result), /PRIVATE_SENTINEL|retired/);
+});
+
+test('public images use export membership and hashes, never visitor-supplied Drive IDs', () => {
+  for (const options of [{}, { scanRoot: 'synthetic_root' }]) {
+    const bundle = options.scanRoot ? unmappedFixture() : fixture();
+    const c = context(bundle, { publicMode: true, ...options }), result = c.sandbox.loadLetter('ltr_one');
+    const request = { token: result.token, letter_id: 'ltr_one', image_id: 'img_B', drive_file_id: 'arbitrary', path: '../private.jpg' };
+    assert.throws(() => c.sandbox.loadImage({ ...request, image_id: 'arbitrary' }), /not part/);
+    const answer = c.sandbox.loadImage(request);
+    assert.equal(answer.status, 'ready'); assert.equal(answer.url, '');
+    assert.equal(Buffer.from(answer.data.split(',')[1], 'base64').toString(), bytes.toString());
+    const f = frontend(); f.sandbox.renderLetter(result); f.calls[0].success(answer);
+    assert.ok(allNodes(f.ids.record).some(node => node.tag === 'img'));
+    assert.ok(!allNodes(f.ids.record).some(node => /Open original in Drive/.test(node.textContent)));
+    assert.ok(allNodes(f.ids.record).some(node => node.tag === 'summary' && node.textContent === 'Metadata evidence'));
+    bundle.letters[0].scans[0].sha256 = '0'.repeat(64);
+    const nextToken = c.sandbox.loadLetter('ltr_one').token;
+    assert.equal(c.sandbox.loadImage({ ...request, token: nextToken }).status, 'changed');
+  }
+});
+
+test('public request budget is shared across callers and resets in a new minute', () => {
+  const cache = new Map(), c = context(fixture(), { publicMode: true, cache, now: 100000 });
+  for (let i = 0; i < 120; i++) c.sandbox.listFolders('');
+  const another = context(fixture(), { publicMode: true, cache, now: 100000 });
+  for (const call of [() => another.sandbox.listFolders(''), () => another.sandbox.searchLetters(''),
+    () => another.sandbox.loadLetter('ltr_one'), () => another.sandbox.loadImage({})]) assert.throws(call, /Viewer is busy/);
+  assert.equal(another.counts().exportReads, 0);
+  assert.equal(another.counts().lockReleases, 4);
+  assert.equal(context(fixture(), { publicMode: true, cache, now: 120000 }).sandbox.listFolders('').total, 1);
+});
+
+test('image budget stops repeated image reads while text remains available', () => {
+  const c = context(fixture(), { publicMode: true }), token = c.sandbox.loadLetter('ltr_one').token;
+  for (let i = 0; i < 60; i++) c.sandbox.loadImage({ token, letter_id: 'ltr_one', image_id: 'img_B' });
+  assert.throws(() => c.sandbox.loadImage({ token, letter_id: 'ltr_one', image_id: 'img_B' }), /Viewer is busy/);
+  assert.equal(c.counts().imageReads, 60);
+  assert.equal(c.sandbox.listFolders('').total, 1);
+});
+
+test('public limiter fails closed on contention or cache errors before Drive access', () => {
+  for (const options of [{ lockBusy: true }, { cacheError: true }]) {
+    const c = context(fixture(), { publicMode: true, ...options });
+    assert.throws(() => c.sandbox.listFolders(''), /Viewer is busy/);
+    assert.equal(c.counts().exportReads, 0);
+    assert.equal(c.counts().lockReleases, options.lockBusy ? 0 : 1);
+  }
+});
+
+test('export failures return useful errors without Drive details or JSON contents', () => {
+  for (const options of [{ exportError: true }, { exportText: '' }, { exportText: '{"PRIVATE_SENTINEL":' }]) {
+    assert.throws(() => context(fixture(), { publicMode: true, ...options }).sandbox.listFolders(''), error => {
+      assert.match(error.message, /maintainer must check access, valid JSON/);
+      assert.doesNotMatch(error.message, /PRIVATE/);
+      return true;
+    });
+  }
+});
+
+test('only the intended reader RPCs and page entry point are public functions', () => {
+  const names = [...server.matchAll(/^function (\w+)\(/gm)].map(match => match[1]).filter(name => !name.endsWith('_'));
+  assert.deepEqual(names.sort(), ['doGet', 'listFolders', 'loadImage', 'loadLetter', 'searchLetters']);
 });

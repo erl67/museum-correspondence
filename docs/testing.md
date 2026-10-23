@@ -9,11 +9,23 @@ node --test apps_script/viewer/test_viewer.cjs
 git diff --check
 ```
 
-Recorded on **2026-10-22**, Windows, Python **3.14.2**, Node **24.19.0**:
-**110 Python tests passed, 0 failed, 0 skipped; 38 viewer tests passed, 0 failed,
+Recorded on **2026-10-23**, Windows, Python **3.14.2**, Node **24.19.0**:
+**114 Python tests passed, 0 failed, 0 skipped; 50 viewer tests passed, 0 failed,
 0 skipped.** Pinned runtime dependencies were installed in this repository's `.venv`:
 google-genai 2.23.0, Pillow 12.3.0, tzdata 2026.3. The SDK emits a Python 3.14
 `_UnionGenericAlias` deprecation warning; it does not fail the suite.
+
+The catalogue update covers opt-in authority aliases, conflicting-name refusal, retained
+uncertainty and source readings, catalogue-date confirmation expiry, and retired-record
+exclusion with direct-link history/recovery. An initial viewer run caught a label variable
+shadowing error (15 renderer failures); that was fixed and all 41 viewer tests then passed.
+Tests establish software behavior, not historical accuracy.
+
+The public-viewer update adds server-side active-record filtering, explicit reading-field
+responses, search/connection leakage checks, verified public images without Drive links,
+shared request/image budget exhaustion and reset, lock/cache failure behavior, and safe export
+errors. Restricted-mode regressions remain covered. Public deployment configuration retains
+drive.readonly. No live anonymous deployment or quota/load test was performed.
 
 The 2026-10-22 folder/reader update passed the offline DOM/RPC tests. Its local synthetic
 preview server was unreachable from the in-app browser (connection timeout); visual browser

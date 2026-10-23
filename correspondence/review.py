@@ -1,6 +1,7 @@
 """Append-only human corrections, separate from service responses."""
 from copy import deepcopy
-from .schema import FIELDS, RELATIONS, validate_document
+from .catalogue import catalogue_names
+from .schema import FIELDS, RELATIONS, date_interval, validate_document
 from .storage import identity
 
 
@@ -8,13 +9,14 @@ def current_records(store, inventory):
     results = store.current_results()
     images = {i["image_id"]: i for i in inventory["images"]}
     reviews = [e for e in store.events() if e["kind"] == "review"]
+    registered = people(store)
     records = []
     for letter in inventory["letters"]:
         result = results.get(letter["letter_id"])
         record = deepcopy(letter)
         record.update(execution="blocked" if letter["grouping"] == "needs_review" else "unprocessed", metadata_review="unreviewed",
                       transcription_review="unreviewed", relationship_review="unreviewed",
-                      document=None, result=result, review_history=[], stale_reviews=[])
+                      document=None, result=result, review_history=[], stale_reviews=[], catalogue_date=None)
         if result:
             manifest = result["provenance"]["images"]
             stale = ([i["image_id"] for i in manifest] != letter["image_ids"] or any(
@@ -39,6 +41,7 @@ def current_records(store, inventory):
             if doc is None:
                 continue
             if correction.get("pages"):
+                record["catalogue_date"] = None
                 record["transcription_review"] = "in_progress"
                 record["metadata_review"] = "in_progress"
                 record["relationship_review"] = "in_progress"
@@ -46,6 +49,12 @@ def current_records(store, inventory):
                 record["metadata_review"] = "in_progress"
                 record["relationship_review"] = "in_progress"
             doc["metadata"].update(deepcopy(correction.get("metadata", {})))
+            if "date" in correction.get("metadata", {}):
+                record["catalogue_date"] = None
+            confirmed = correction.get("catalogue_date")
+            if confirmed and confirmed.get("date_basis") == doc["metadata"]["date"]:
+                record["catalogue_date"] = dict(deepcopy(confirmed), source=correction["source"],
+                                                review_event=event["event_id"])
             for page in doc["pages"]:
                 page.update(deepcopy(correction.get("pages", {}).get(page["image_id"], {})))
             if "summary" in correction:
@@ -62,6 +71,13 @@ def current_records(store, inventory):
             _, reasons = validate_document(record["document"], record["image_ids"], record["hints"])
             record["review_reasons"] = [r for r in record["review_reasons"] if not r.startswith(prefix)]
             record["review_reasons"] += [r for r in reasons if r.startswith(prefix)]
+        record["catalogue_names"] = catalogue_names(
+            record["document"]["metadata"] if record["document"] else {}, record["hints"], registered)
+        if record["catalogue_date"]:
+            record["review_reasons"] = [
+                "date: abbreviated/ambiguous source date; separate confirmed date used for catalogue sorting"
+                if r == "date: normalization unsupported or ambiguous; excluded from chronology" else r
+                for r in record["review_reasons"]]
         records.append(record)
     return records
 
@@ -85,6 +101,8 @@ def apply_review(store, inventory, patch):
             raise ValueError("A person needs name, aliases array and approved review_status")
         if not patch["person_id"].startswith("per_"):
             raise ValueError("Person IDs must start per_")
+        if "standardize_display" in patch and not isinstance(patch["standardize_display"], bool):
+            raise ValueError("standardize_display must be true or false")
     elif kind == "letter":
         record = next((r for r in current_records(store, inventory) if r["letter_id"] == patch.get("letter_id")), None)
         if (not record or not record["document"] or record["execution"] != "complete"
@@ -98,6 +116,16 @@ def apply_review(store, inventory, patch):
                 raise ValueError("Unknown approved person_id; register it first")
         document = deepcopy(record["document"])
         document["metadata"].update(patch.get("metadata", {}))
+        if "catalogue_date" in patch:
+            confirmed = patch["catalogue_date"]
+            date = document["metadata"]["date"]
+            if (not isinstance(confirmed, dict)
+                    or not date_interval(confirmed.get("value"), confirmed.get("precision"))
+                    or confirmed.get("value") != date.get("normalized")
+                    or confirmed.get("precision") != date.get("precision")):
+                raise ValueError("Catalogue date must confirm the current normalized date and precision")
+            patch["catalogue_date"] = dict(value=confirmed["value"], precision=confirmed["precision"],
+                                           date_basis=deepcopy(date))
         pages = {p["image_id"]: p for p in document["pages"]}
         for iid, changes in patch.get("pages", {}).items():
             if iid not in pages or set(changes) - {"text", "status", "annotations"}:

@@ -66,7 +66,15 @@ def reading(record, images):
         lines += ["CATALOGUE DETAILS (separate from the letter)"]
         for field in ("sender", "recipient", "date", "place_written"):
             detail = doc["metadata"].get(field, {})
-            lines.append(f"{field.replace('_', ' ').title()}: {detail.get('value') or 'Unknown'} ({detail.get('certainty', 'unknown')})")
+            label = record.get("catalogue_names", {}).get(field, {})
+            shown = label.get("name") or (detail.get("normalized") if field != "place_written" else None) or detail.get("value") or 'Unknown'
+            certainty = "filename hint · unverified" if label.get("basis") == "filename hint" else detail.get("certainty", "unknown")
+            lines.append(f"{field.replace('_', ' ').title()}: {shown} ({certainty})")
+            if detail.get("value") and shown != detail["value"]:
+                lines.append(f"  Recorded reading: {detail['value']}")
+        if record.get("catalogue_date"):
+            lines.append("Catalogue date confirmed: " + record["catalogue_date"]["value"] +
+                         " — " + record["catalogue_date"]["source"])
         if doc["summary"]:
             lines += ["", "INTERPRETIVE SUMMARY", doc["summary"]]
     else:

@@ -168,13 +168,22 @@ unresolved. Shared subject matter alone does not establish a reply.
 
 The [Apps Script viewer](apps_script/viewer/README.md) starts with expandable letter folders,
 each listing dates, senders and recipients in chronological order. Search filters the folders
-by saved text and metadata. Lists, letter headings and details prefer saved normalized names
-and dates; original readings remain in the evidence panel. Open a letter for its summary,
+by saved text and metadata. Retired groupings are excluded from browsing and navigation but
+remain accessible by ID for history only in restricted mode. Lists, letter headings and details prefer staff catalogue
+names, then saved normalized names and dates; original readings remain in the evidence panel.
+Register reusable display aliases and confirm abbreviated catalogue dates through the
+[local review workflow](docs/review.md#standard-catalogue-names). These are separate from
+transcription, attribution certainty and relationship matching. Open a letter for its summary,
 then each original scan on the left and its matching transcription on the right.
 Letter details and connections follow the pages;
 previous/next letter and folder navigation appear at both top and bottom. It makes no
 transcription-service calls. Configure the collection's Drive folder to find scans by their
-exported paths, or supply explicit image mappings, plus the institution's access-gate file.
+exported paths, or supply explicit image mappings. The supplied viewer now defaults to public
+reading, deployed as **Me / Anyone** with read-only Drive access. It publishes current letters
+and verified scans while withholding retired records and internal provenance. The underlying
+Drive files can remain private; their letter content is deliberately public through the app.
+See the viewer README for setup, request limits and how to end public access. Restricted
+reader execution remains available with an institutional access-gate file.
 Every displayed scan is checked against its exported size and SHA-256. Nothing is uploaded,
 deployed, made public, or shared by the Python
 application through the Drive API. Explicit `--publish-text` writes generated files into the
