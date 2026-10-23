@@ -29,6 +29,50 @@ during this resumed work.
 
 ## Responsibilities
 
+### Main viewer settings filled — 2026-10-23
+
+At the user's explicit request, all three Drive settings are now populated in the main
+`apps_script/viewer/Code.gs`, as well as the ignored local deployment copy. The same supplied
+viewer JSON file serves as access gate and export; the supplied collection folder is the scan
+root. This supersedes the earlier blank-template setup described below. The offline viewer
+harness replaces configured IDs with synthetic IDs before execution; no real Drive calls occur.
+
+### Normalized name/date display — 2026-10-22
+
+Folder tables, accessible letter links, headings and metadata details now prefer saved
+normalized sender/recipient/attributed-author names and dates, falling back to original
+readings when normalization is absent/blank. Dates retain their exported precision. Raw
+readings/evidence remain in the collapsed provenance panel and page text is unchanged.
+Other metadata still shows its source reading with a separate normalized value where present.
+Uncertainty, review labels, chronology policy, records and archival identities are preserved;
+different saved normalized names are not automatically merged or rewritten.
+
+The ignored configured deployment copy's Viewer.html was refreshed with its three existing
+Drive IDs preserved in Code.gs. Only Viewer.html needs replacing for this display update;
+the existing deployment must then use a new version. No export regeneration is required.
+Offline verification: **110 Python and 38 viewer tests passed, no failures or skips**.
+No live requests, upload, sharing changes, deployment, commit or push occurred.
+
+### Read-only scan lookup by collection folder — 2026-10-22
+
+The deployed-viewer setup exposed that local exports have scan paths but no Drive image IDs.
+The optional `SCAN_ROOT_FOLDER_ID` setting now lets the viewer resolve an unmapped scan by
+its exact relative folder/filename path under that explicit Drive root. `loadLetter` advertises
+folder lookup only in its response; stored exports and source scans remain unchanged. Image
+requests keep the access gate, export pin, page membership, inventory state, MIME/size limits
+and SHA-256 checks. Explicit mappings take priority and do not silently fall back on errors.
+
+Only exact child-name lookups are used, with no Drive-wide search, shortcut following or
+cross-reader cache. Duplicate visible paths and unsafe relative paths are refused. Inaccessible
+or absent paths are honestly reported as unavailable to the reader. Staff must copy both updated
+viewer source files into Apps Script, preserve their existing file IDs, set the collection root
+folder ID, and update the deployment version; no JSON regeneration is needed for this option.
+
+The root setting is blank in tracked source; institution-specific IDs stay out of the repository.
+Offline verification: **110 Python and 35 viewer tests passed, no failures or skips**.
+No source scans, exports, saved results, sharing or deployed code were changed. No live Drive
+or transcription-service requests, upload, deployment, commit or push occurred.
+
 ### Folder catalogue and letter reading view — 2026-10-22
 
 The Apps Script viewer now starts with expandable source folders and complete chronological
@@ -214,7 +258,8 @@ Current limits:
   native Google rendering and any future service-account availability require staff setup.
 - Pairwise matching and full export rereads are appropriate for an initial collection, not
   unlimited scale. Matching uses saved structured references rather than automatic prose NLP.
-- The explicit access gate/file IDs are blank. No data upload, sharing change or deployment occurred.
+- The access/export file IDs and collection scan folder are configured from user-supplied links.
+  No data upload, sharing change or deployment was performed by this agent.
 - Historical reading fidelity, transcription completeness, identities, dates and reply links
   require human review. Hashes and software test counts establish neither accuracy nor authorship.
 

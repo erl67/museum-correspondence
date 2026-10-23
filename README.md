@@ -168,11 +168,15 @@ unresolved. Shared subject matter alone does not establish a reply.
 
 The [Apps Script viewer](apps_script/viewer/README.md) starts with expandable letter folders,
 each listing dates, senders and recipients in chronological order. Search filters the folders
-by saved text and metadata. Open a letter for its summary, then each original scan on the left
-and its matching transcription on the right. Letter details and connections follow the pages;
+by saved text and metadata. Lists, letter headings and details prefer saved normalized names
+and dates; original readings remain in the evidence panel. Open a letter for its summary,
+then each original scan on the left and its matching transcription on the right.
+Letter details and connections follow the pages;
 previous/next letter and folder navigation appear at both top and bottom. It makes no
-transcription-service calls. It needs a deliberate Drive mapping and the institution's existing
-access-gate configuration. Nothing is uploaded, deployed, made public, or shared by the Python
+transcription-service calls. Configure the collection's Drive folder to find scans by their
+exported paths, or supply explicit image mappings, plus the institution's access-gate file.
+Every displayed scan is checked against its exported size and SHA-256. Nothing is uploaded,
+deployed, made public, or shared by the Python
 application through the Drive API. Explicit `--publish-text` writes generated files into the
 local Drive folder for Drive for desktop to sync; it does not change sharing or deploy a viewer.
 

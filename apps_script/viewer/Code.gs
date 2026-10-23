@@ -1,7 +1,8 @@
 /** Read-only correspondence viewer. Configure IDs; never change sharing here. */
 const SETTINGS = Object.freeze({
-  ACCESS_FILE_ID: '', // Existing institutional access-gate file; do not copy unrelated IDs.
-  EXPORT_FILE_ID: '', // Explicitly uploaded viewer.json, shared under existing access rules.
+  ACCESS_FILE_ID: '1dwIdqRS_urGeGyI-E9pUhMrh0AmSCnnP', // Reader must have access to the viewer JSON file.
+  EXPORT_FILE_ID: '1dwIdqRS_urGeGyI-E9pUhMrh0AmSCnnP', // Viewer JSON file supplied by the user.
+  SCAN_ROOT_FOLDER_ID: '1AvEal1n0hiB_MCuDbplb0RmhCeGFi8L0', // Collection folder containing all scan subfolders.
   MAX_EXPORT_BYTES: 10 * 1024 * 1024,
   MAX_IMAGE_BYTES: 12 * 1024 * 1024,
   MAX_LETTER_IMAGE_BYTES: 24 * 1024 * 1024
@@ -136,13 +137,46 @@ function loadLetter(id) {
   const folder = folderOf_(letter);
   const siblings = value.letters.filter(item => folderOf_(item) === folder).sort(compareLetters_);
   const index = siblings.findIndex(item => item.letter_id === letter.letter_id);
-  return { letter, token,
+  const displayLetter = { ...letter, scans: letter.scans.map(scan => ({ ...scan,
+    mapping_status: !scan.drive_file_id && SETTINGS.SCAN_ROOT_FOLDER_ID ? 'folder_lookup' : scan.mapping_status })) };
+  return { letter: displayLetter, token,
     navigation: { folder, position: index + 1, total: siblings.length,
       previous: index > 0 ? letterRow_(siblings[index - 1]) : null,
       next: index + 1 < siblings.length ? letterRow_(siblings[index + 1]) : null },
     links: value.links.filter(link => link.from_letter === id || link.to_letter === id),
     unresolved: value.unresolved.filter(ref => ref.from_letter === id),
     warnings: value.warnings || [] };
+}
+
+function singleDriveChild_(iterator, path) {
+  if (!iterator.hasNext()) return { status: 'path_unavailable',
+    message: 'Scan path is not visible to this account in the collection folder: ' + path +
+      '. Check the collection folder, exact names and access permissions.' };
+  const item = iterator.next();
+  if (iterator.hasNext()) return { status: 'ambiguous_path',
+    message: 'More than one Drive item matches: ' + path + '. Supply an explicit image mapping to select the original.' };
+  if (item.isTrashed()) return { status: 'missing_scan', message: 'An item in the scan path is in Trash: ' + path };
+  return { item };
+}
+
+function scanByPath_(scan) {
+  const path = scan.path;
+  if (typeof path !== 'string' || path.length > 4096 || /[\\\u0000-\u001f]/.test(path) || /^[A-Za-z]:/.test(path)) {
+    return { status: 'invalid_path', message: 'Exported scan path must be relative to the collection folder.' };
+  }
+  const parts = path.split('/');
+  if (parts.length > 32 || parts.some(part => !part || part === '.' || part === '..')) {
+    return { status: 'invalid_path', message: 'Exported scan path must be relative to the collection folder.' };
+  }
+  let folder = DriveApp.getFolderById(SETTINGS.SCAN_ROOT_FOLDER_ID);
+  if (folder.isTrashed()) return { status: 'missing_scan', message: 'Configured collection folder is in Trash.' };
+  for (const name of parts.slice(0, -1)) {
+    const selected = singleDriveChild_(folder.getFoldersByName(name), path);
+    if (!selected.item) return selected;
+    folder = selected.item;
+  }
+  const selected = singleDriveChild_(folder.getFilesByName(parts[parts.length - 1]), path);
+  return selected.item ? { file: selected.item } : selected;
 }
 
 function loadImage(request) {
@@ -153,28 +187,36 @@ function loadImage(request) {
   if (!scan) throw new Error('Image is not part of this letter.');
   if (scan.status === 'missing') return { status: 'missing_scan', message: 'Scan missing from the local inventory.' };
   if (scan.status !== 'ready') return { status: 'unavailable', message: 'Inventory scan state: ' + scan.status };
-  if (!scan.drive_file_id) return { status: 'missing_mapping', message: 'No Google Drive mapping supplied.' };
-  if (!/^[A-Za-z0-9_-]{10,}$/.test(scan.drive_file_id)) throw new Error('Invalid Drive mapping.');
+  if (!scan.drive_file_id && !SETTINGS.SCAN_ROOT_FOLDER_ID) {
+    return { status: 'missing_mapping', message: 'No Google Drive mapping supplied. Set the collection scan folder or provide an image mapping.' };
+  }
+  if (scan.drive_file_id && !/^[A-Za-z0-9_-]{10,}$/.test(scan.drive_file_id)) throw new Error('Invalid Drive mapping.');
+  if (!scan.drive_file_id && !/^[A-Za-z0-9_-]{10,}$/.test(SETTINGS.SCAN_ROOT_FOLDER_ID)) throw new Error('Invalid collection folder ID.');
   const planned = letter.scans.reduce((n, item) => n + (item.size || 0), 0);
   if (planned > SETTINGS.MAX_LETTER_IMAGE_BYTES || scan.size > SETTINGS.MAX_IMAGE_BYTES) {
     return { status: 'too_large', message: 'Scan display limit reached; use the original Drive file.' };
   }
   let file;
   try {
-    file = DriveApp.getFileById(scan.drive_file_id);
-    if (file.isTrashed()) return { status: 'missing_scan', message: 'Mapped Drive scan is in Trash.' };
+    if (scan.drive_file_id) file = DriveApp.getFileById(scan.drive_file_id);
+    else {
+      const resolved = scanByPath_(scan);
+      if (!resolved.file) return resolved;
+      file = resolved.file;
+    }
+    if (file.isTrashed()) return { status: 'missing_scan', message: 'Drive scan is in Trash.' };
     if (file.getSize() > SETTINGS.MAX_IMAGE_BYTES || file.getMimeType() !== 'image/jpeg') {
-      return { status: 'unavailable', message: 'Mapped file is too large or is not JPEG.' };
+      return { status: 'unavailable', message: 'Drive file is too large or is not JPEG.' };
     }
     const bytes = file.getBlob().getBytes();
-    if (bytes.length !== scan.size) return { status: 'changed', message: 'Mapped scan size changed; review mapping.' };
+    if (bytes.length !== scan.size) return { status: 'changed', message: 'Drive scan size differs from the export; review the scan path or mapping.' };
     const sha = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes)
       .map(byte => ('0' + (byte & 255).toString(16)).slice(-2)).join('');
-    if (sha !== scan.sha256) return { status: 'changed', message: 'Mapped scan hash differs; review mapping.' };
+    if (sha !== scan.sha256) return { status: 'changed', message: 'Drive scan hash differs from the export; review the scan path or mapping.' };
     return { status: 'ready', data: 'data:image/jpeg;base64,' + Utilities.base64Encode(bytes),
-      url: 'https://drive.google.com/file/d/' + encodeURIComponent(scan.drive_file_id) + '/view' };
+      url: 'https://drive.google.com/file/d/' + encodeURIComponent(file.getId()) + '/view' };
   } catch (error) {
     // Drive deliberately hides whether an inaccessible ID exists. Do not claim deletion.
-    return { status: 'inaccessible', message: 'Drive scan cannot be read by this account. It may have been removed; Drive does not distinguish these cases.' };
+    return { status: 'inaccessible', message: 'Drive scan or its collection folder cannot be read by this account. It may have been removed; Drive does not distinguish these cases.' };
   }
 }

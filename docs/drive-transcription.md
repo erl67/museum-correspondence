@@ -157,7 +157,8 @@ Always include both the store and output options shown above. The program does n
 the last `--output` setting.
 
 The correspondence web viewer reads the synced viewer JSON internally and displays the
-letter text. It still needs its actual Drive file IDs, scan mapping and deployment configured;
+letter text. It still needs its actual access/export file IDs, collection scan folder (or explicit
+scan mappings), and deployment configured;
 saving the TXT files alone does not configure it. See [viewer setup](../apps_script/viewer/README.md).
 
 ## Corrected scan filenames

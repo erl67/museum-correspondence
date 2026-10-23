@@ -10,7 +10,7 @@ git diff --check
 ```
 
 Recorded on **2026-10-22**, Windows, Python **3.14.2**, Node **24.19.0**:
-**110 Python tests passed, 0 failed, 0 skipped; 28 viewer tests passed, 0 failed,
+**110 Python tests passed, 0 failed, 0 skipped; 38 viewer tests passed, 0 failed,
 0 skipped.** Pinned runtime dependencies were installed in this repository's `.venv`:
 google-genai 2.23.0, Pillow 12.3.0, tzdata 2026.3. The SDK emits a Python 3.14
 `_UnionGenericAlias` deprecation warning; it does not fail the suite.
@@ -75,6 +75,12 @@ paths, selecting older eligible cache revisions for exports, and approval invali
   handling, conservative document/hint chronology, partial/ambiguous dates, retired records,
   previous/next boundaries, folder return links, page-specific scan/text/translation pairing,
   summary-before-pages and metadata-after-pages, image proportions and decode failure recovery.
+- Optional collection-folder lookup for unmapped images, exact nested Unicode paths and root
+  images, duplicate/missing/trashed children, unsafe paths, MIME/size/hash failures, explicit-map
+  priority without fallback, revoked access and bounds checked before any folder read.
+- Saved normalized name/date display across lists, accessible links, letter headings and
+  details, fallback for blank normalization, partial-date precision, preserved uncertainty,
+  raw readings/evidence and literal source text, with original/normalized values searchable.
 
 All temporary fixtures live under ignored `local/test-tmp` and are cleaned up by unittest.
 No optional skips hide missing SDK coverage: install requirements before running.

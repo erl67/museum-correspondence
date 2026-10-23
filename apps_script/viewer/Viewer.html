@@ -123,9 +123,14 @@
       a.href = document.body.dataset.url + '?letter=' + encodeURIComponent(id);
       return a;
     }
+    function prefersNormalized(name) {
+      return ['sender', 'recipient', 'attributed_author', 'date'].includes(name);
+    }
     function value(meta, name) {
-      const field = (meta || {})[name];
-      return (field && (field.value || field.normalized)) || 'Unknown';
+      const field = (meta || {})[name] || {};
+      const normalized = typeof field.normalized === 'string' ? field.normalized.trim() : '';
+      // Display the saved proposal; never infer an identity or expand a partial date here.
+      return (prefersNormalized(name) ? normalized || field.value : field.value || normalized) || 'Unknown';
     }
     function folderLabel(name) { return name === '.' ? 'Collection root' : name; }
     function displayField(parent, letter, name) {
@@ -207,13 +212,14 @@
       const figure = element('figure', null, columns, 'page-column');
       element('p', 'Original scan', figure, 'column-label');
       const sheet = element('div', null, figure, 'page-sheet scan-sheet');
+      const canLoad = scan && ['mapped', 'folder_lookup'].includes(scan.mapping_status);
       const scanMessage = !scan ? 'No source scan is listed for this transcription.' :
         scan.status === 'missing' ? 'Scan missing from local inventory.' :
         scan.status !== 'ready' ? 'Inventory scan state: ' + scan.status :
-        scan.mapping_status !== 'mapped' ? 'No Google Drive mapping supplied.' : 'Loading authenticated scan…';
+        !canLoad ? 'No Google Drive mapping supplied. Configure the collection scan folder or an image mapping.' : 'Loading authenticated scan…';
       const message = element('p', scanMessage, sheet, 'scan-message');
       const caption = element('figcaption', scan ? scan.order + '. ' + scan.path : page.image_id, figure);
-      if (scan && scan.mapping_status === 'mapped' && scan.status === 'ready') jobs.push({ scan, pair, sheet, caption, message });
+      if (canLoad && scan.status === 'ready') jobs.push({ scan, pair, sheet, caption, message });
       const text = element('section', null, columns, 'page-column');
       element('p', 'Source-language transcription', text, 'column-label');
       const transcript = element('div', null, text, 'page-sheet transcript-sheet');
@@ -260,7 +266,7 @@
       const section = element('section', null, root, 'panel');
       element('h3', 'Letter details', section);
       const grid = element('dl', null, section, 'metadata-grid');
-      const labels = { sender: 'Sender', recipient: 'Recipient', date: 'Date as written', place_written: 'Place written',
+      const labels = { sender: 'Sender', recipient: 'Recipient', date: 'Date', place_written: 'Place written',
         addresses: 'Addresses', affiliations: 'Affiliations', language: 'Language', document_type: 'Document type',
         attributed_author: 'Attributed author', physical_hand: 'Physical hand' };
       for (const [name, label] of Object.entries(labels)) {
@@ -268,7 +274,9 @@
         const dd = element('dd', value(letter.metadata, name), item);
         const field = (letter.metadata || {})[name] || {};
         if (field.certainty && field.certainty !== 'explicit') element('span', 'Certainty: ' + field.certainty, dd, 'field-note');
-        if (field.normalized && field.normalized !== field.value) element('span', 'Normalized: ' + field.normalized, dd, 'field-note');
+        if (!prefersNormalized(name) && field.normalized && field.normalized !== field.value) {
+          element('span', 'Normalized: ' + field.normalized, dd, 'field-note');
+        }
       }
       const id = element('div', null, grid); element('dt', 'Archival ID', id); element('dd', letter.letter_id, id);
       if (letter.hints) element('p', 'Provisional filename/folder hints (not document evidence): ' +

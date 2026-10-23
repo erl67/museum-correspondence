@@ -27,19 +27,41 @@ function fixture() {
 }
 
 function context(bundle = fixture(), options = {}) {
-  let gateReads = 0, imageReads = 0;
+  let gateReads = 0, imageReads = 0, folderReads = 0;
+  const lookups = [];
   const blob = { getDataAsString: () => JSON.stringify(bundle), getBytes: () => [...bytes] };
   const file = { getName: () => 'synthetic', isTrashed: () => false, getId: () => 'export',
     getSize: () => JSON.stringify(bundle).length, getLastUpdated: () => new Date(1000),
     getBlob: () => blob };
   const image = { ...file, getSize: () => bytes.length, getMimeType: () => 'image/jpeg',
     getBlob: () => { imageReads++; return blob; } };
+  function iterator(items) {
+    let index = 0;
+    return { hasNext: () => index < items.length, next: () => items[index++] };
+  }
+  function folder(tree) {
+    return { isTrashed: () => Boolean(tree.trashed),
+      getFoldersByName(name) {
+        lookups.push('folder:' + name);
+        return iterator(((tree.folders || {})[name] || []).map(folder));
+      },
+      getFilesByName(name) {
+        lookups.push('file:' + name);
+        return iterator(((tree.files || {})[name] || []).map(id => ({ ...image, getId: () => id, ...options.image })));
+      } };
+  }
+  const folderTree = options.folderTree || { folders: { folder: [{ files: {
+    'img_B.jpg': ['resolved_drive_img_B'], 'img_A.jpg': ['resolved_drive_img_A'] } }] } };
   const sandbox = {
     DriveApp: { getFileById(id) {
       if (id === 'gate') { gateReads++; if (options.deny) throw Error('denied'); return file; }
       if (id === 'export') return file;
       if (options.imageError) throw Error('hidden existence');
-      return { ...image, ...options.image };
+      return { ...image, getId: () => id, ...options.image };
+    }, getFolderById(id) {
+      folderReads++;
+      if (options.folderError || id !== options.scanRoot) throw Error('hidden folder existence');
+      return folder(folderTree);
     } },
     Utilities: { DigestAlgorithm: { SHA_256: 'sha256' },
       computeDigest: (_, data) => [...crypto.createHash('sha256').update(Buffer.from(data)).digest()],
@@ -47,9 +69,10 @@ function context(bundle = fixture(), options = {}) {
     console
   };
   vm.createContext(sandbox);
-  vm.runInContext(server.replace("ACCESS_FILE_ID: ''", "ACCESS_FILE_ID: 'gate'")
-    .replace("EXPORT_FILE_ID: ''", "EXPORT_FILE_ID: 'export'"), sandbox);
-  return { sandbox, counts: () => ({ gateReads, imageReads }) };
+  vm.runInContext(server.replace(/\bACCESS_FILE_ID:\s*'[^']*'/, "ACCESS_FILE_ID: 'gate'")
+    .replace(/\bEXPORT_FILE_ID:\s*'[^']*'/, "EXPORT_FILE_ID: 'export'")
+    .replace(/\bSCAN_ROOT_FOLDER_ID:\s*'[^']*'/, "SCAN_ROOT_FOLDER_ID: '" + (options.scanRoot || '') + "'"), sandbox);
+  return { sandbox, lookups, counts: () => ({ gateReads, imageReads, folderReads }) };
 }
 
 test('search sender recipient date and saved text without image reads', () => {
@@ -161,6 +184,115 @@ test('large gallery refused before image read', () => {
   const c = context(bundle), token = c.sandbox.loadLetter('ltr_one').token;
   assert.equal(c.sandbox.loadImage({ token, letter_id: 'ltr_one', image_id: 'img_B' }).status, 'too_large');
   assert.equal(c.counts().imageReads, 0);
+});
+
+function unmappedFixture() {
+  const bundle = fixture();
+  for (const scan of bundle.letters[0].scans) {
+    delete scan.drive_file_id; scan.mapping_status = 'missing_mapping';
+  }
+  return bundle;
+}
+
+test('configured collection folder resolves exact exported paths and verifies bytes', () => {
+  const bundle = unmappedFixture(), c = context(bundle, { scanRoot: 'synthetic_root' });
+  c.sandbox.listFolders('');
+  const result = c.sandbox.loadLetter('ltr_one');
+  assert.equal(c.counts().folderReads, 0); // Resolve only during deferred image requests.
+  assert.equal(result.letter.scans[0].mapping_status, 'folder_lookup');
+  assert.equal(bundle.letters[0].scans[0].mapping_status, 'missing_mapping');
+  const answer = c.sandbox.loadImage({ token: result.token, letter_id: 'ltr_one', image_id: 'img_B' });
+  assert.equal(answer.status, 'ready');
+  assert.equal(answer.url, 'https://drive.google.com/file/d/resolved_drive_img_B/view');
+  assert.match(answer.data, /^data:image\/jpeg;base64,/);
+  assert.deepEqual(c.lookups, ['folder:folder', 'file:img_B.jpg']);
+  assert.equal(c.counts().gateReads, 3); assert.equal(c.counts().imageReads, 1);
+  const f = frontend(); f.sandbox.renderLetter(result);
+  assert.equal(f.calls[0].req.image_id, 'img_B');
+  f.calls[0].failure({ message: 'Synthetic error' });
+  assert.equal(f.calls[1].req.image_id, 'img_A');
+});
+
+test('collection lookup supports root scans and nested folders with exact Unicode names', () => {
+  for (const pathname of ['img_B.jpg', 'Shufeldt, Percy/Été/img_B.jpg']) {
+    const bundle = unmappedFixture(); bundle.letters[0].scans[0].path = pathname;
+    const leaf = { files: { 'img_B.jpg': ['resolved_drive_img_B'] } };
+    const tree = pathname.includes('/') ? { folders: { 'Shufeldt, Percy': [{ folders: { 'Été': [leaf] } }] } } : leaf;
+    const c = context(bundle, { scanRoot: 'synthetic_root', folderTree: tree });
+    const token = c.sandbox.loadLetter('ltr_one').token;
+    assert.equal(c.sandbox.loadImage({ token, letter_id: 'ltr_one', image_id: 'img_B' }).status, 'ready');
+    assert.deepEqual(c.lookups, pathname.includes('/') ? ['folder:Shufeldt, Percy', 'folder:Été', 'file:img_B.jpg'] : ['file:img_B.jpg']);
+  }
+});
+
+test('collection lookup refuses unavailable or duplicate names without choosing a substitute', () => {
+  const leaf = { files: { 'img_B.jpg': ['resolved_drive_img_B'] } };
+  for (const [folderTree, expected] of [
+    [{}, 'path_unavailable'], [{ folders: { folder: [{}] } }, 'path_unavailable'],
+    [{ folders: { folder: [leaf, leaf] } }, 'ambiguous_path'],
+    [{ folders: { folder: [{ files: { 'img_B.jpg': ['one', 'two'] } }] } }, 'ambiguous_path'],
+    [{ trashed: true }, 'missing_scan'], [{ folders: { folder: [{ trashed: true }] } }, 'missing_scan']
+  ]) {
+    const c = context(unmappedFixture(), { scanRoot: 'synthetic_root', folderTree });
+    const token = c.sandbox.loadLetter('ltr_one').token;
+    assert.equal(c.sandbox.loadImage({ token, letter_id: 'ltr_one', image_id: 'img_B' }).status, expected);
+    assert.equal(c.counts().imageReads, 0);
+  }
+});
+
+test('folder-resolved scans retain hash, type, size and per-account access checks', () => {
+  for (const [options, expected] of [
+    [{ folderError: true }, 'inaccessible'],
+    [{ image: { getMimeType: () => 'application/pdf' } }, 'unavailable'],
+    [{ image: { getSize: () => 13 * 1024 * 1024 } }, 'unavailable'],
+    [{ image: { getBlob: () => ({ getBytes: () => [1, 2, 3] }) } }, 'changed'],
+    [{ image: { getBlob: () => ({ getBytes: () => [...Buffer.alloc(bytes.length)] }) } }, 'changed'],
+    [{ image: { isTrashed: () => true } }, 'missing_scan']
+  ]) {
+    const c = context(unmappedFixture(), { scanRoot: 'synthetic_root', ...options });
+    const token = c.sandbox.loadLetter('ltr_one').token;
+    const answer = c.sandbox.loadImage({ token, letter_id: 'ltr_one', image_id: 'img_B' });
+    assert.equal(answer.status, expected); assert.equal(answer.data, undefined);
+  }
+  const denied = context(unmappedFixture(), { scanRoot: 'synthetic_root', deny: true });
+  assert.throws(() => denied.sandbox.loadImage({}), /Access denied/);
+  assert.equal(denied.counts().folderReads, 0);
+});
+
+test('unsafe exported paths are rejected before any folder read', () => {
+  for (const pathname of ['../img_B.jpg', '/folder/img_B.jpg', 'folder//img_B.jpg',
+    'folder/./img_B.jpg', 'folder/../img_B.jpg', 'folder\\img_B.jpg', 'C:/img_B.jpg',
+    'folder/\u0000img_B.jpg', 'x/'.repeat(33) + 'img_B.jpg', null]) {
+    const bundle = unmappedFixture(); bundle.letters[0].scans[0].path = pathname;
+    const c = context(bundle, { scanRoot: 'synthetic_root' }), token = c.sandbox.loadLetter('ltr_one').token;
+    assert.equal(c.sandbox.loadImage({ token, letter_id: 'ltr_one', image_id: 'img_B' }).status, 'invalid_path');
+    assert.equal(c.counts().folderReads, 0);
+  }
+});
+
+test('explicit mappings take priority and never fall back when the mapped scan is inaccessible', () => {
+  for (const imageError of [false, true]) {
+    const c = context(fixture(), { scanRoot: 'synthetic_root', imageError });
+    const result = c.sandbox.loadLetter('ltr_one');
+    assert.equal(result.letter.scans[0].mapping_status, 'mapped');
+    assert.equal(c.sandbox.loadImage({ token: result.token, letter_id: 'ltr_one', image_id: 'img_B' }).status,
+      imageError ? 'inaccessible' : 'ready');
+    assert.equal(c.counts().folderReads, 0);
+  }
+});
+
+test('folder lookup cannot bypass export pinning, page membership, inventory state or payload bounds', () => {
+  const bundle = unmappedFixture(), c = context(bundle, { scanRoot: 'synthetic_root' });
+  const token = c.sandbox.loadLetter('ltr_one').token;
+  assert.equal(c.sandbox.loadImage({ token: 'old', letter_id: 'ltr_one', image_id: 'img_B' }).status, 'changed');
+  assert.throws(() => c.sandbox.loadImage({ token, letter_id: 'ltr_one', image_id: 'other', path: 'img_B.jpg' }), /not part/);
+  bundle.letters[0].scans[0].status = 'missing';
+  const missingToken = c.sandbox.loadLetter('ltr_one').token;
+  assert.equal(c.sandbox.loadImage({ token: missingToken, letter_id: 'ltr_one', image_id: 'img_B' }).status, 'missing_scan');
+  bundle.letters[0].scans[0].status = 'ready'; bundle.letters[0].scans[0].size = 25 * 1024 * 1024;
+  const oversizedToken = c.sandbox.loadLetter('ltr_one').token;
+  assert.equal(c.sandbox.loadImage({ token: oversizedToken, letter_id: 'ltr_one', image_id: 'img_B' }).status, 'too_large');
+  assert.equal(c.counts().folderReads, 0);
 });
 
 test('search bound clearly reports truncation', () => {
@@ -309,6 +441,81 @@ test('each scan is left of its own matched transcription; summary is above and m
   assert.ok(children.indexOf(metadata) > children.indexOf(pairs[1]));
   assert.match(allNodes(metadata).map(n => n.textContent).join('\n'), /Synthetic place/);
   assert.equal(f.ids.catalogue.hidden, true);
+});
+
+test('normalized names and ISO dates are consistent across catalogue, accessible links, heading and details', () => {
+  const bundle = fixture(), letter = bundle.letters[0];
+  letter.metadata.sender = { value: 'Alex. BENNETT', normalized: 'Alexandra Bennett', certainty: 'explicit', evidence: [] };
+  letter.metadata.recipient = { value: 'Mr. C. Curator', normalized: 'Casey Curator', certainty: 'inferred', evidence: [] };
+  letter.metadata.attributed_author = { value: 'A. Bennett', normalized: 'Alexandra Bennett', certainty: 'uncertain', evidence: [] };
+  letter.metadata.date = { value: 'May 1st, 1899', normalized: '1899-05-01', precision: 'day', certainty: 'explicit', evidence: [] };
+  const original = JSON.stringify(bundle), c = context(bundle), f = frontend();
+  f.catalogueCalls[0].success(c.sandbox.listFolders(''));
+  const catalogueNodes = allNodes(f.ids.results);
+  assert.ok(catalogueNodes.some(n => n.textContent === 'Alexandra Bennett'));
+  assert.ok(catalogueNodes.some(n => n.textContent === 'Casey Curator'));
+  assert.ok(catalogueNodes.some(n => n.textContent === '1899-05-01'));
+  assert.ok(!catalogueNodes.some(n => n.textContent === 'Alex. BENNETT' || n.textContent === 'May 1st, 1899'));
+  assert.match(catalogueNodes.find(n => n.tag === 'a').attributes['aria-label'], /Alexandra Bennett to Casey Curator, 1899-05-01/);
+  f.sandbox.renderLetter(c.sandbox.loadLetter('ltr_one'));
+  const heading = f.ids.record.children.find(n => n.className === 'letter-heading');
+  assert.ok(heading.children.some(n => n.tag === 'h2' && n.textContent === 'Alexandra Bennett → Casey Curator'));
+  assert.ok(heading.children.some(n => n.textContent.startsWith('1899-05-01 ·')));
+  const panel = f.ids.record.children.find(n => n.className === 'panel'), panelNodes = allNodes(panel);
+  assert.equal(panelNodes.filter(n => n.tag === 'dd' && n.textContent === 'Alexandra Bennett').length, 2);
+  assert.ok(panelNodes.some(n => n.tag === 'dd' && n.textContent === '1899-05-01'));
+  assert.ok(panelNodes.some(n => n.tag === 'dt' && n.textContent === 'Date'));
+  assert.ok(!panelNodes.some(n => n.textContent.startsWith('Normalized:')));
+  assert.ok(panelNodes.some(n => n.textContent === 'Certainty: inferred'));
+  assert.ok(panelNodes.some(n => n.textContent === 'Certainty: uncertain'));
+  const evidence = f.ids.record.children.find(n => n.className === 'provenance');
+  const preserved = JSON.parse(evidence.children.find(n => n.tag === 'pre').textContent);
+  assert.equal(preserved.metadata.sender.value, 'Alex. BENNETT');
+  assert.equal(preserved.metadata.date.value, 'May 1st, 1899');
+  assert.equal(JSON.stringify(bundle), original);
+  assert.equal(c.sandbox.searchLetters('Alex. BENNETT').total, 1);
+  assert.equal(c.sandbox.searchLetters('Alexandra Bennett').total, 1);
+});
+
+test('display falls back to original readings and preserves partial dates and uncertainty', () => {
+  const f = frontend();
+  for (const normalized of [null, '', '   ', undefined]) {
+    const letter = fixture().letters[0];
+    letter.metadata.sender = { value: 'Original sender', normalized };
+    letter.metadata.date = { value: 'May, year unclear', normalized, precision: 'ambiguous', certainty: 'uncertain' };
+    f.sandbox.renderLetter({ letter, token: 't', links: [], unresolved: [], warnings: [] });
+    const heading = f.ids.record.children.find(n => n.className === 'letter-heading');
+    assert.ok(heading.children.some(n => n.textContent.startsWith('Original sender →')));
+    assert.ok(heading.children.some(n => n.textContent.startsWith('May, year unclear ·')));
+  }
+  for (const [normalized, precision] of [['1899', 'year'], ['1899-05', 'month']]) {
+    const letter = fixture().letters[0];
+    letter.metadata.date = { value: precision === 'year' ? 'In 1899' : 'May 1899', normalized, precision, certainty: 'inferred' };
+    f.sandbox.renderLetter({ letter, token: 't', links: [], unresolved: [], warnings: [] });
+    const heading = f.ids.record.children.find(n => n.className === 'letter-heading');
+    assert.ok(heading.children.some(n => n.textContent.startsWith(normalized + ' ·')));
+    const text = allNodes(f.ids.record).map(n => n.textContent).join('\n');
+    assert.match(text, /Certainty: inferred/);
+    assert.ok(!text.includes(normalized + '-01'));
+  }
+  assert.equal(f.sandbox.value({}, 'sender'), 'Unknown');
+});
+
+test('normalized labels remain literal text and do not rewrite page text, folder names or other metadata readings', () => {
+  const bundle = fixture(), letter = bundle.letters[0];
+  const dangerous = '<img src=x onerror=bad()> & Émile';
+  letter.metadata.sender = { value: 'Original sender', normalized: dangerous };
+  letter.metadata.place_written = { value: 'Place as written', normalized: 'Search place' };
+  const f = frontend(), c = context(bundle);
+  f.catalogueCalls[0].success(c.sandbox.listFolders(''));
+  assert.equal(f.ids.results.children[0].children[0].textContent, 'folder');
+  f.sandbox.renderLetter(c.sandbox.loadLetter('ltr_one'));
+  const nodes = allNodes(f.ids.record);
+  assert.ok(nodes.some(n => n.tag === 'h2' && n.textContent === dangerous + ' → B'));
+  assert.ok(nodes.some(n => n.tag === 'dd' && n.textContent === 'Place as written'));
+  assert.ok(nodes.some(n => n.textContent === 'Normalized: Search place'));
+  assert.ok(nodes.some(n => n.tag === 'pre' && n.textContent === letter.pages[0].text));
+  assert.equal(nodes.filter(n => n.tag === 'img' || n.tag === 'script').length, 0);
 });
 
 test('both navigation bars link to adjacent letters and reopen the source folder', () => {
