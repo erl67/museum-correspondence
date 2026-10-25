@@ -1,6 +1,6 @@
 """Append-only human corrections, separate from service responses."""
 from copy import deepcopy
-from .catalogue import catalogue_names
+from .catalogue import catalogue_names, resolved_name_conflicts
 from .schema import FIELDS, RELATIONS, date_interval, validate_document
 from .storage import identity
 
@@ -69,8 +69,10 @@ def current_records(store, inventory):
             # historical validation in the saved result; display current conflicts.
             prefix = "filename/document conflict: "
             _, reasons = validate_document(record["document"], record["image_ids"], record["hints"])
+            resolved = resolved_name_conflicts(record["document"]["metadata"], record["hints"], registered)
             record["review_reasons"] = [r for r in record["review_reasons"] if not r.startswith(prefix)]
-            record["review_reasons"] += [r for r in reasons if r.startswith(prefix)]
+            record["review_reasons"] += [r for r in reasons if r.startswith(prefix)
+                                         and not any(r.startswith(prefix + name + ":") for name in resolved)]
         record["catalogue_names"] = catalogue_names(
             record["document"]["metadata"] if record["document"] else {}, record["hints"], registered)
         if record["catalogue_date"]:

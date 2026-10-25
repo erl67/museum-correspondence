@@ -9,17 +9,38 @@ node --test apps_script/viewer/test_viewer.cjs
 git diff --check
 ```
 
-Recorded on **2026-10-23**, Windows, Python **3.14.2**, Node **24.19.0**:
-**114 Python tests passed, 0 failed, 0 skipped; 50 viewer tests passed, 0 failed,
+Recorded on **2026-10-25**, Windows, Python **3.14.2**, Node **24.19.0**:
+**120 Python tests passed, 0 failed, 0 skipped; 50 viewer tests passed, 0 failed,
 0 skipped.** Pinned runtime dependencies were installed in this repository's `.venv`:
 google-genai 2.23.0, Pillow 12.3.0, tzdata 2026.3. The SDK emits a Python 3.14
 `_UnionGenericAlias` deprecation warning; it does not fail the suite.
+
+The correspondence-1.1 baseline passed 117 Python tests; the final 120 include approved-name
+projection without private authority notes, retained ambiguous aliases, frozen context,
+name/alias fingerprint changes with stable image bytes/order/IDs, and matching dry-run/live
+request preparation using a fake transport. Existing CLI catalogue cases also check all four
+names reach fresh requests without becoming a handwriting profile or changing saved evidence.
+No service requests occurred. Read-only preparation of the actual saved 21-letter / 44-scan
+inventory verified original bytes/order/resolution, four name candidates, changed fingerprints
+for all old results and payloads below the configured limit (largest 10,105,383 estimated bytes).
+This establishes request readiness, not improved reading accuracy. The 194-file pre-update
+archive was hash-verified; results, inventory, quota and active exports are unchanged. One
+append-only publication event adopts the existing Drive JSON only after exact byte comparison
+with both generated local copies and the backup. No Drive files were written.
 
 The catalogue update covers opt-in authority aliases, conflicting-name refusal, retained
 uncertainty and source readings, catalogue-date confirmation expiry, and retired-record
 exclusion with direct-link history/recovery. An initial viewer run caught a label variable
 shadowing error (15 renderer failures); that was fixed and all 41 viewer tests then passed.
 Tests establish software behavior, not historical accuracy.
+
+Main-program rerun coverage uses the actual CLI and fake provider responses with temporary
+synthetic scans. It verifies saved grouping/authority reuse through inventory, `--pending`,
+cache reuse, export and remembered publication, plus fresh revisions and newly added letters.
+All four preferred names persist across those workflows; original readings/certainty remain
+intact. Known aliases stop generating spelling-conflict notes while ambiguous/different
+identities remain flagged. No-request reruns preserve quota bytes, and a new service revision
+expires a prior catalogue-date confirmation. No live collection publication occurs in tests.
 
 The public-viewer update adds server-side active-record filtering, explicit reading-field
 responses, search/connection leakage checks, verified public images without Drive links,

@@ -10,9 +10,10 @@ from .execution import transcribe
 from .exports import export_all
 from .images import prepare_request
 from .profiles import load_profile, register_profile
+from .prompt import known_correspondents
 from .provider import Gemini, api_key
 from .relationships import match
-from .review import apply_review, current_records
+from .review import apply_review, current_records, people
 from .storage import Store, identity, lock, read_json
 from .usage import aggregate, read_usage
 from .publication import publication_state, publish_text
@@ -104,13 +105,14 @@ def run(args):
         safe_destinations(inventory, store.root, config.quota_file)
         if args.command == "dry-run":
             profile = load_profile(args.profile)
+            correspondents = known_correspondents(people(store))
             print_inventory(inventory)
             failures = 0
             for letter in inventory["letters"]:
                 if not letter["active"]:
                     continue
                 try:
-                    request = prepare_request(inventory, letter, config, profile)
+                    request = prepare_request(inventory, letter, config, profile, correspondents=correspondents)
                     print(f"READY {letter['letter_id']}: {request['estimated_bytes']:,} estimated bytes; "
                           f"fingerprint {request['fingerprint']}")
                 except (ValueError, OSError) as exc:
@@ -170,6 +172,7 @@ def run(args):
             if args.letter and set(args.letter) != {l["letter_id"] for l in selected}:
                 raise ValueError("Unknown or retired selected letter ID")
             profile = load_profile(args.profile)  # One frozen copy for the whole batch.
+            correspondents = known_correspondents(people(store))
             register_profile(store, profile)
             run_id, failures, reused = identity("run_"), 0, 0
             store.append("run_start", dict(run_id=run_id, letter_ids=[l["letter_id"] for l in selected],
@@ -178,7 +181,7 @@ def run(args):
                 for letter in selected:
                     print(f"Processing {letter['letter_id']}: {len(letter['image_ids'])} page(s); {config.model}")
                     try:
-                        request = prepare_request(inventory, letter, config, profile)
+                        request = prepare_request(inventory, letter, config, profile, correspondents=correspondents)
                     except (ValueError, OSError) as exc:
                         failures += 1
                         print(f"BLOCKED {letter['letter_id']}: {exc}")

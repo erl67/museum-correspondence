@@ -1,5 +1,9 @@
 # Read-only correspondence viewer
 
+Open the viewer at **[cmbirds.org/letters](https://cmbirds.org/letters)**. This is the canonical
+address for readers, bookmarks and shared access links. Apps Script execution (`/exec`) and
+script-editor URLs are maintenance details, not the published viewer address.
+
 Files: `Code.gs`, `Viewer.html`, `appsscript.json`. Node tests and this README are not Apps
 Script source. The viewer requires no Gemini credentials, no Python runtime, and no
 transcription-service requests. It reads an explicitly supplied `viewer.json` export and
@@ -96,8 +100,10 @@ To see the manifest, open **Project Settings → Show appsscript.json manifest f
 Save, then **Deploy → Manage deployments → Edit (pencil) → Version: New version**.
 Choose **Execute as: Me**, **Who has access: Anyone**, then **Deploy** and authorize the
 read-only Drive scope as the deploying account. If that deployment cannot change execution
-identity, create a new web-app deployment with those settings and use its new `/exec` URL.
-Test the `/exec` URL in a signed-out/private browser window, including a letter and all its scans.
+identity, create a new web-app deployment with those settings. If its `/exec` URL changes,
+update the destination for the canonical address, [cmbirds.org/letters](https://cmbirds.org/letters).
+Test that canonical address in a signed-out/private browser window, including a letter and
+all its scans. The deployment's `/exec` URL can also be used for maintenance diagnostics.
 This public-mode update does not require regenerating the JSON.
 
 To end public access, archive every public deployment in **Manage deployments**. Saving source
@@ -177,7 +183,7 @@ is `local/viewer-deployment/Correspondence_viewer.json`. Code changes alone remo
 rows; the refreshed JSON supplies the standard names and confirmed catalogue date. Neither
 publication nor deployment is performed by preparing these local files.
 
-**Read letter** opens one complete letter at `…/exec?letter=ltr_…`, independent of names/dates.
+**Read letter** opens one complete letter using its stable archival ID, independent of names/dates.
 An interpretive summary appears above all its source pages. Each page pairs its original scan
 on the left with its own source-language transcription on the right, matched by image ID in
 exported scan order. The transcription has a subtle paper background and left accent. On desktop,
@@ -192,7 +198,7 @@ Evidence remains in a collapsed panel. Raw partial responses and technical prove
 available only in restricted mode.
 **Previous letter** and **Next letter** at both top and bottom follow the complete folder order,
 including when opened from search. They stop at folder boundaries. **All folders** returns to
-the catalogue with that letter's folder expanded (`…/exec?folder=…`).
+the catalogue with that letter's folder expanded.
 
 Proposed, confirmed, rejected and unresolved connections have distinct labels. Incoming
 confirmed replies and outgoing predecessors use the same stable-ID links. Earlier decisions

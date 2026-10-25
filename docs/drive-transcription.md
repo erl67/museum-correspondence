@@ -7,6 +7,10 @@ UTF-8 `.txt` report per letter, with page boundaries, plus combined text files. 
 reports show the actual letter text before plain-English catalogue details and review notes;
 they contain no JSON sections.
 
+Already transcribed the collection and want the improved reading prompt? Follow
+[Rerun after a prompt update](prompt-rerun.md). It uses the existing inventory and store;
+the first-time discovery and `--pending` instructions below do not refresh completed letters.
+
 ## 1. Open PowerShell in the project folder
 
 Open PowerShell and paste:
@@ -106,7 +110,23 @@ or reports a pause/error. The default allocation allows 2 attempt starts per min
 uses the same Google project. A daily limit may require continuing on a later day.
 
 `--pending` skips letters with a current complete saved reading, even after 48 hours.
-Use it to continue without re-requesting completed letters. In contrast, `--all` and
+Use it to continue without re-requesting completed letters.
+Using the same `local/full-collection` store also retains grouping overrides, the four standard
+catalogue names and their aliases, and revision-bound reviews. Every inventory, transcription
+and export refresh applies those name standards automatically to TXT catalogue details, CSV
+display columns and viewer data. This also applies to newly added letters and new model
+responses; no separate repair script is needed for catalogue labels. Prompt `correspondence-1.1`
+also supplies approved names/aliases as reading candidates on new requests. Source spellings, evidence
+and certainty remain intact. Known aliases do not trigger filename/name conflict warnings;
+unrecognized or ambiguous names still need review.
+
+The confirmed August 7, 1899 catalogue date survives inventory, export, skipped completed
+letters and reuse of the same saved revision. A genuinely new transcription (`--fresh`, or
+an expired cache with `--all`) requires rebasing that evidence-bound date confirmation. The
+program does not automatically approve a newly interpreted two-digit year. Retired groupings
+remain inactive and excluded from current viewer listings; the journal retains their history.
+
+The `--all` and
 `--letter` reuse exactly matching complete results only while they are no more than 48 hours
 old; changed filenames/settings or older results can lead to another paid request.
 If a request was interrupted
@@ -156,9 +176,10 @@ To regenerate the reports from saved results without any Gemini requests, run:
 Always include both the store and output options shown above. The program does not remember
 the last `--output` setting.
 
-The correspondence web viewer reads the synced viewer JSON internally and displays the
-letter text. It still needs its actual access/export file IDs, collection scan folder (or explicit
-scan mappings), and deployment configured;
+Open the correspondence web viewer at **[cmbirds.org/letters](https://cmbirds.org/letters)**.
+Use this canonical address for bookmarks and shared access links. The viewer reads the synced
+viewer JSON internally and displays the letter text. Maintainers configure its Drive file IDs,
+collection scan folder (or explicit scan mappings), and deployment;
 saving the TXT files alone does not configure it. See [viewer setup](../apps_script/viewer/README.md).
 
 ## Corrected scan filenames

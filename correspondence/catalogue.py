@@ -38,3 +38,17 @@ def catalogue_names(metadata, hints, people):
                                 basis=basis, matched_values=values, source=person["source"],
                                 match="person_id" if pid else "catalogue alias")
     return labels
+
+
+def resolved_name_conflicts(metadata, hints, people):
+    """Name fields whose reading and filename resolve to the same authority.
+
+    This resolves a catalogue spelling discrepancy only, not historical attribution.
+    Missing, conflicting or ambiguous aliases never suppress a review reason.
+    """
+    readings = catalogue_names(metadata, {}, people)
+    filenames = catalogue_names({}, hints, people)
+    return {name for name in ("sender", "recipient")
+            if name in readings and name in filenames
+            and readings[name]["basis"] == "metadata"
+            and readings[name]["authority_id"] == filenames[name]["authority_id"]}

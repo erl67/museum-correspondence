@@ -32,13 +32,14 @@ def prepare_image(raw, max_edge=0):
         return output.getvalue(), operations + ["JPEG quality 95; subsampling 0"]
 
 
-def prepare_request(inventory, letter, config, profile=None):
+def prepare_request(inventory, letter, config, profile=None, *, correspondents=None):
     if not letter["active"] or letter["grouping"] not in {"provisional", "reviewed"}:
         raise ValueError("Grouping needs a reviewed override before transcription")
     images = {i["image_id"]: i for i in inventory["images"]}
     if len(letter["image_ids"]) > config.max_pages:
         raise ValueError("Letter exceeds max_pages; no pages were omitted")
-    prompt = build_prompt(letter, profile)
+    correspondents = deepcopy(correspondents or [])
+    prompt = build_prompt(letter, profile, correspondents)
     manifest, data = [], []
     size = len(encoded(config.generation())) + len(prompt.encode("utf-8")) * 6 + 8192
     for iid in letter["image_ids"]:
@@ -62,7 +63,8 @@ def prepare_request(inventory, letter, config, profile=None):
     provenance = dict(schema_version=SCHEMA_VERSION, application_version=__version__,
                       provider="gemini", model=config.model, generation=config.generation(),
                       prompt_version=PROMPT_VERSION, prompt=prompt, prompt_sha256=digest(prompt.encode()),
-                      hints=deepcopy(letter["hints"]), handwriting_profile=deepcopy(profile), images=manifest,
+                      hints=deepcopy(letter["hints"]), handwriting_profile=deepcopy(profile),
+                      known_correspondents=correspondents, images=manifest,
                       max_edge=config.max_edge)
     return dict(fingerprint=digest(encoded(provenance)), provenance=provenance,
                 image_data=data, estimated_bytes=size)

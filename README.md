@@ -59,6 +59,8 @@ For the full collection, use its actual scan directory and a separate store:
 
 For step-by-step Windows instructions covering both Drive subfolders and `.txt` output,
 see [Transcribe the Drive collection](docs/drive-transcription.md).
+For existing completed letters, use [Rerun after a prompt update](docs/prompt-rerun.md);
+`--pending` deliberately skips them even when the prompt changes.
 
 ```powershell
 .\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" inventory --input "G:\My Drive\Correspondence" --output "local/full-exports"
@@ -71,7 +73,9 @@ Ambiguous groups require a [reviewed grouping override](docs/review.md) before t
 ## Transcribe when ready
 
 Only `transcribe` can contact Gemini. It sends the selected letter's **complete ordered image
-set**, filename/folder hints, and any explicitly selected handwriting context to Google.
+set**, filename/folder hints, approved correspondent names/aliases from this store,
+and any explicitly selected handwriting context to Google. Names are candidates for reading
+initials and abbreviations, not proof of a letter's author or approved handwriting examples.
 Requests may incur costs. Confirm the institution's collection-data handling arrangements and
 account allocation before choosing to run them. No live requests were made while implementing
 this version.
@@ -166,6 +170,10 @@ unresolved. Shared subject matter alone does not establish a reply.
 
 ## Viewer and verification
 
+Open the viewer at **[cmbirds.org/letters](https://cmbirds.org/letters)**. Use this canonical
+address in bookmarks and shared links. Apps Script deployment and script-editor URLs are
+for maintenance; see the [viewer setup guide](apps_script/viewer/README.md).
+
 The [Apps Script viewer](apps_script/viewer/README.md) starts with expandable letter folders,
 each listing dates, senders and recipients in chronological order. Search filters the folders
 by saved text and metadata. Retired groupings are excluded from browsing and navigation but
@@ -173,7 +181,12 @@ remain accessible by ID for history only in restricted mode. Lists, letter headi
 names, then saved normalized names and dates; original readings remain in the evidence panel.
 Register reusable display aliases and confirm abbreviated catalogue dates through the
 [local review workflow](docs/review.md#standard-catalogue-names). These are separate from
-transcription, attribution certainty and relationship matching. Open a letter for its summary,
+transcription, attribution certainty and relationship matching. Normal inventory, transcription
+and export commands reapply the saved names automatically, including to new letters and fresh
+responses. Keep using the same collection store; no repair script is needed for reruns.
+Known aliases no longer produce filename/name conflict warnings; ambiguous or different people
+still do. Date confirmations survive ordinary reruns but require review after a new transcription
+revision or changed evidence. Open a letter for its summary,
 then each original scan on the left and its matching transcription on the right.
 Letter details and connections follow the pages;
 previous/next letter and folder navigation appear at both top and bottom. It makes no

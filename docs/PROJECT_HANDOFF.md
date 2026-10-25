@@ -29,6 +29,70 @@ during this resumed work.
 
 ## Responsibilities
 
+### Correspondent context and reading prompt — 2026-10-25
+
+Prompt `correspondence-1.1` responds to staff review of saved Sutton/Shufeldt readings.
+It asks for evidence-backed identity expansion, scientific/common bird-name recognition,
+cross-line/page and repeated-letterform checks, a second look at uncertain and confidently
+awkward readings, and plain-text superscript ordinals. It preserves source spellings and
+uncertainty; no hardcoded letter corrections or automatic text replacements were introduced.
+
+The existing approved person registry now supplies a frozen names/aliases-only candidate
+list in both dry-run and transcription requests. `prompt.py` owns its projection/policy;
+the CLI reads it once per batch and `images.py` snapshots it in provenance and fingerprints.
+This is separate from approved handwriting profiles and catalogue display matching. Saved
+model readings, reviewer notes and internal authority sources are not sent as name context.
+Provider/settings, image preparation/order, schema, retries/accounting and stable IDs are
+unchanged. The new prompt intentionally invalidates old request fingerprints, retaining all
+stored revisions and reviews. Names/aliases change fingerprints; internal note edits do not.
+
+See [prompt rerun](prompt-rerun.md) for the existing-store command, 48-hour continuation,
+review rebasing and same-Drive-file viewer update. The actual current export tree is
+`local/full-exports`; its pre-update snapshot and the store/deployment/config backup are under
+ignored `local/archives/20261025-before-prompt-1.1/`, with a hash manifest. Active exports are
+retained for refresh; no new transcriptions, Drive writes, publication or deployment were run.
+The source root now contains `old/` and `analysis/` material, so unchanged-scan reruns should
+use the saved inventory rather than rediscovering those folders as potential records.
+Existing uncommitted catalogue/rerun/documentation work was preserved.
+
+Preflight found the Drive viewer JSON was already the 23 October catalogue export, identical
+to both local generated copies, while the publication ledger still owned its older hash.
+A single `text_publication` event adopts that exact verified version, preserving the prior
+journal prefix and all result/inventory/review/quota bytes. This avoids an overwrite refusal
+on the first rerun; no publication guard was relaxed. The archive includes the Drive copy,
+adoption audit and readiness report. Verification: **120 Python and 50 viewer tests passed,
+no failures/skips**; all 21 original-resolution requests fit, with 44 unchanged ordered scans.
+No live requests, source edits, Drive writes, commits or pushes were performed. Reading
+improvement still needs assessment after an authorized rerun.
+
+### Main-program catalogue reruns — 2026-10-25
+
+Confirmed that all inventory/transcription/export paths derive catalogue labels from persistent
+person reviews, including fresh responses and newly discovered letters. No dependency on the
+ignored one-time repair script exists. Current filename/name conflict checks now recognize
+unique enabled authority aliases, so known Todd/Shufeldt abbreviations stop generating false
+spelling conflicts. Genuine/ambiguous conflicts and historical result validation are preserved.
+
+New offline CLI regressions exercise grouping repair, repeat inventory, pending continuation,
+cache reuse, exports, automatic publication into temporary synthetic inputs, fresh responses,
+and new letters with all four preferred names. They verify original results/pages, saved
+authority records, unchanged scans/quota on no-request reruns, and proper expiry of date
+confirmation on a new revision. The current full-collection store remains the source of the
+user's names and decisions; replacing it with an empty store does not carry those decisions.
+Verification: **117 Python and 50 viewer tests passed, zero failures/skips**. Read-only
+inspection of the real store found all four enabled names, 49 standard name fields, 21 active
+letters and two retired records. Only the unresolved C. M. Sutton name conflict remains.
+No live transcription, Drive write, deployment, commit or push was performed.
+
+### Canonical viewer address — 2026-10-25
+
+The canonical reader address is **[cmbirds.org/letters](https://cmbirds.org/letters)**.
+The main README, Drive guide and viewer setup guide use it for access, bookmarks and sharing.
+Apps Script execution (`/exec`) and script-editor URLs are maintenance details. When replacing
+a deployment, maintainers must keep the canonical address pointing to the intended deployment
+and verify reading through that address. This documentation-only change does not alter or
+verify live routing, deployment or access settings.
+
 ### Intentional public viewer — 2026-10-23
 
 At the user's request, Code.gs now enables PUBLIC_MODE and the manifest uses USER_DEPLOYING /

@@ -156,6 +156,14 @@ Shufeldt**, **W.E. Clyde Todd**, and **George Miksch Sutton**. Their local autho
 include the known filename abbreviations and saved name variants. `C. M. Sutton` is not an
 alias for George Miksch Sutton; its inferred attribution still needs checking.
 
+From prompt `correspondence-1.1`, approved person names and aliases also accompany new
+requests as candidate identities, separately from handwriting profiles. Only names and aliases
+are sent, not reviewer/source notes. The model must check the visible initials and wording;
+name expansions remain inferred metadata, with the written initials preserved in source text.
+Ambiguous candidates are retained and no person link or letter approval is assigned by this
+context. Updating a name/alias changes future request fingerprints; changing an internal
+authority note alone does not. Model-generated readings never become approved examples.
+
 Enabled aliases apply to existing and future exports from that store, so transcription need
 not be rerun. Sender, recipient and attributed-author display labels use an explicit person
 link where present, otherwise a unique enabled alias in the reading/normalized value. Only
@@ -167,6 +175,14 @@ Viewer labels/search, readable TXT catalogue details, and CSV `sender_display` a
 `recipient_display` use this layer. Original values, normalized proposals, evidence, page text
 and certainty stay intact. `catalogue_names` in JSON records each label's authority and basis.
 The viewer keeps **Filename hint · unverified**, **inferred** and other uncertainty labels.
+
+These rules run in the main program whenever current records are built, including ordinary
+inventory/export runs and exports after new transcriptions. No repair script is required.
+Filename/name conflict notes are recalculated against the saved authorities: if both names
+resolve uniquely to the same authority, the spelling discrepancy is resolved for the catalogue.
+Unknown, ambiguous and different identities remain reviewable. Original service validation
+and responses are retained unchanged; this does not establish historical attribution.
+Back up and reuse the collection store: a new empty store has no staff authority decisions.
 
 ## Confirm a catalogue date
 
