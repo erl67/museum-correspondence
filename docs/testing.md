@@ -9,11 +9,22 @@ node --test apps_script/viewer/test_viewer.cjs
 git diff --check
 ```
 
-Recorded on **2026-10-25**, Windows, Python **3.14.2**, Node **24.19.0**:
-**120 Python tests passed, 0 failed, 0 skipped; 50 viewer tests passed, 0 failed,
+Recorded on **2026-10-26**, Windows, Python **3.14.2**, Node **24.22.1**:
+**120 Python tests passed, 0 failed, 0 skipped; 55 viewer tests passed, 0 failed,
 0 skipped.** Pinned runtime dependencies were installed in this repository's `.venv`:
 google-genai 2.23.0, Pillow 12.3.0, tzdata 2026.3. The SDK emits a Python 3.14
 `_UnionGenericAlias` deprecation warning; it does not fail the suite.
+
+Catalogue-summary checks cover bounded Unicode snippets, retained full summaries, absent
+summaries, literal HTML-like text, placement under the correct letter and no extra image/RPC
+requests in public and restricted modes.
+
+The filename-date fallback regressions cover new short-year readings without confirmation,
+both public/restricted readers, catalogue/navigation/detail consistency, differing unsupported
+model proposals, supported-document priority, and partial/invalid filename dates. An offline
+check against the latest real export placed the four-page August 7 letter between April 18
+and September 16, with zero unplaced current letters in both reader modes. It made no network
+calls and did not modify the export.
 
 The correspondence-1.1 baseline passed 117 Python tests; the final 120 include approved-name
 projection without private authority notes, retained ambiguous aliases, frozen context,

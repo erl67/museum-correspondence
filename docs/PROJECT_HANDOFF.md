@@ -29,6 +29,43 @@ during this resumed work.
 
 ## Responsibilities
 
+### Catalogue summary snippets — 2026-10-26
+
+Catalogue rows now include a maximum 360-character interpretive-summary snippet from the
+saved summary, rendered as literal text beneath its letter's metadata across four columns.
+Inset spacing, a subtle background and left accent distinguish it within the same table.
+Missing summaries omit the extra row; full letter summaries and stored text remain unchanged.
+This adds bounded text to the existing response and DOM, with no additional Drive reads,
+RPCs or image downloads. Both Code.gs and Viewer.html must be replaced and deployed as a
+new version; JSON regeneration is unnecessary. The existing footer and date/name changes
+are preserved. Prepared local source copies were refreshed with backups.
+Verification: 120 Python and 55 viewer tests passed, zero failures/skips. No deployment,
+Drive writes, source changes, commit or push occurred; native browser layout remains unverified.
+
+### Filename dates keep catalogue placement after reruns — 2026-10-26
+
+The latest complete August 7 Percy result reads `Aug 7 - 99`, normalized to `1899-08-07`.
+Its prior catalogue-date review correctly became stale on the new revision. The remaining
+viewer bug was that any document date blocked filename fallback, so the valid saved filename
+date could not place the letter. The earlier per-revision confirmation was too narrow a fix.
+
+Catalogue sorting now prefers an applicable confirmation, then a supported document date,
+then any calendar-valid filename date, including when the document date is ambiguous,
+abbreviated, uncertain or malformed. Lists, navigation, headings and details use the selected
+date consistently and label filename placement **Filename hint · unverified**. Source date
+readings/evidence remain intact. Unsupported/missing dates without a valid filename still
+sort last. Partial dates retain precision. Relationship chronology and review expiry are unchanged.
+
+Both main viewer source files and the local prepared copies are updated. Deploying those two
+files as a new version is required; the existing fresh JSON already has the needed hints.
+No additional transcription, JSON replacement or review event is needed. Original saved
+results, store, quota, source scans and exports are unchanged. Verification: **120 Python
+and 53 viewer tests passed, no failures/skips**, covering public and restricted readers,
+short-year reruns, navigation, differing unsupported proposals and partial/invalid dates.
+An offline check of the latest real export placed all current letters, including the four-page
+August 7 letter between April 18 and September 16, in both public and restricted modes.
+No live requests, Drive writes, deployment, commit or push occurred.
+
 ### Correspondent context and reading prompt — 2026-10-25
 
 Prompt `correspondence-1.1` responds to staff review of saved Sutton/Shufeldt readings.

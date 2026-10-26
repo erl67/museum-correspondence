@@ -20,6 +20,12 @@
     .button.disabled { color: #747d78; background: transparent; cursor: default; }
     .site-header { padding-bottom: 24px; border-bottom: 1px solid #d8dcd2; margin-bottom: 28px; }
     .site-header a { color: inherit; text-decoration: none; }
+    .site-footer { margin-top: clamp(96px, 14vw, 180px); padding-top: 24px;
+      border-top: 1px solid #d8dcd2; color: #5d6b65; font-size: .8125rem; line-height: 1.7; }
+    .site-footer p { max-width: 760px; margin: 0; }
+    .site-footer .footer-links { display: flex; flex-wrap: wrap; gap: 8px 28px; margin-bottom: 14px; }
+    .site-footer a { color: inherit; overflow-wrap: anywhere; }
+    .site-footer a:hover { color: #225e58; }
     .muted, .field-note { color: #5d6b65; }
     .eyebrow, .column-label { font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
     .eyebrow { color: #61726a; margin: 0; }
@@ -41,13 +47,16 @@
     th { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: #61726a; background: #f5f6f0; }
     td { font-size: .94rem; line-height: 1.5; }
     tbody tr:hover { background: #f5f7f1; }
+    .catalogue-summary-row td { border-top: 0; padding: 0 24px 20px; }
+    .catalogue-summary { margin: 0; padding: 12px 16px; background: #f5f6f0;
+      box-shadow: inset 3px 0 #d9e1d3; color: #5d6b65; font-size: .9rem; line-height: 1.65;
+      white-space: normal; overflow-wrap: anywhere; }
     .field-note { display: block; font-size: .78rem; margin-top: 4px; }
     .letter-nav { display: flex; gap: 12px; justify-content: space-between; align-items: center; flex-wrap: wrap; margin: 24px 0; }
     .nav-position { font-size: .85rem; color: #61726a; }
     .nav-steps { display: flex; gap: 8px; }
     .letter-heading { margin: 32px 0 20px; }
     .letter-summary { max-width: 980px; font: 1.15rem/1.7 Georgia, serif; }
-    .letter-summary h3 { font: 600 .78rem system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #61726a; }
     .page-pair { margin: 36px 0 48px; --page-ratio: 3 / 4; }
     .page-pair > h3 { padding-bottom: 12px; border-bottom: 1px solid #d8dcd2; }
     .page-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
@@ -83,6 +92,7 @@
       .transcript-sheet { aspect-ratio: auto; overflow: visible; }
       .folder > summary { padding: 18px 16px; }
       th, td { padding: 12px 16px; min-width: 130px; }
+      .catalogue-summary-row td { padding: 0 16px 16px; }
       .nav-position { width: 100%; order: 3; }
       .panel { padding: 20px; }
     }
@@ -109,6 +119,16 @@
     </section>
     <article id="record" hidden></article>
   </main>
+  <footer class="site-footer">
+    <p class="footer-links">
+      <a href="https://github.com/erl67/museum-correspondence" target="_blank" rel="noopener noreferrer">Source code on GitHub</a>
+      <span>Contact: <a href="mailto:ERL67@pitt.edu">ERL67@pitt.edu</a></span>
+    </p>
+    <p>This is an unofficial, independently maintained website.
+      It is not affiliated with, sponsored by, or endorsed by
+      Carnegie Museums of Pittsburgh or Carnegie Museum of
+      Natural History (CMNH).</p>
+  </footer>
   <script>
     'use strict';
     function element(tag, text, parent, className) {
@@ -134,11 +154,17 @@
     }
     function folderLabel(name) { return name === '.' ? 'Collection root' : name; }
     function displayValue(letter, name) {
+      if (name === 'date' && letter.sort_basis === 'filename hint') return letter.sort_date;
       const label = (letter.catalogue_names || {})[name];
       return label ? label.name : value(letter.metadata, name);
     }
     function displayField(parent, letter, name) {
       const field = (letter.metadata || {})[name] || {};
+      if (name === 'date' && letter.sort_basis === 'filename hint') {
+        element('span', displayValue(letter, name), parent);
+        element('span', 'Filename hint · unverified', parent, 'field-note');
+        return;
+      }
       if (field.value || field.normalized) {
         element('span', displayValue(letter, name), parent);
         if (field.certainty && field.certainty !== 'explicit') element('span', field.certainty, parent, 'field-note');
@@ -149,16 +175,22 @@
       if (name === 'date' && letter.sort_basis === 'unknown') element('span', 'Not placed in chronology', parent, 'field-note');
       if (name === 'date' && letter.catalogue_date) element('span', 'Catalogue date confirmed', parent, 'field-note');
     }
+    function defaultFolderExpanded(folder, index) {
+      // Change this rule here if different people/folders should open by default later.
+      return index === 0;
+    }
     function renderFolders(result, searching) {
       const root = document.getElementById('results'); root.replaceChildren();
       document.getElementById('message').textContent = result.total + ' letter(s) in ' + result.folders.length + ' folder(s)';
       if (!result.folders.length) element('p', searching ? 'No letters match this search.' : 'No letters are available in this export.', root);
-      for (const folder of result.folders) {
+      const requestedFolder = result.folders.find(folder => folder.name === document.body.dataset.folder);
+      for (const [index, folder] of result.folders.entries()) {
         const details = element('details', null, root, 'folder');
-        details.open = Boolean(searching || document.body.dataset.folder === folder.name);
+        details.open = Boolean(searching || (requestedFolder
+          ? folder.name === requestedFolder.name : defaultFolderExpanded(folder, index)));
         const heading = element('summary', folderLabel(folder.name), details);
         element('span', folder.letters.length + ' letter(s)', heading, 'folder-count');
-        element('p', 'Oldest first. Partial dates keep their recorded precision; filename dates are marked as hints. Uncertain or undated letters follow dated letters.', details, 'folder-help');
+        element('p', 'Oldest first. Partial dates keep their recorded precision. A valid filename date supplies placement when the document date cannot be used, and is marked as a hint. Letters without either usable date follow dated letters.', details, 'folder-help');
         const wrap = element('div', null, details, 'table-wrap');
         const table = element('table', null, wrap);
         table.setAttribute('aria-label', 'Letters in ' + folderLabel(folder.name));
@@ -174,6 +206,12 @@
             displayValue(letter, 'recipient') + ', ' + displayValue(letter, 'date') + ', ' + letter.letter_id);
           element('span', letter.page_count + ' page(s) · ' + letter.execution, reading, 'field-note');
           if (letter.active === false) element('span', 'Retired record', reading, 'field-note');
+          if (letter.summary_snippet) {
+            const summaryRow = element('tr', null, body, 'catalogue-summary-row');
+            const cell = element('td', null, summaryRow); cell.colSpan = 4;
+            const summary = element('p', null, cell, 'catalogue-summary');
+            element('span', letter.summary_snippet, summary);
+          }
         }
       }
     }
@@ -281,7 +319,12 @@
         const dd = element('dd', displayValue(letter, name), item);
         const field = (letter.metadata || {})[name] || {};
         const authority = (letter.catalogue_names || {})[name];
-        if (authority && authority.basis === 'filename hint') element('span', 'Filename hint · unverified', dd, 'field-note');
+        if (name === 'date' && letter.sort_basis === 'filename hint') {
+          element('span', 'Filename hint · unverified', dd, 'field-note');
+          if (field.value || field.normalized) element('span', 'Document date reading: ' + (field.value || field.normalized) +
+            (field.certainty ? ' (' + field.certainty + ')' : ''), dd, 'field-note');
+        }
+        else if (authority && authority.basis === 'filename hint') element('span', 'Filename hint · unverified', dd, 'field-note');
         else if (field.certainty && field.certainty !== 'explicit') element('span', 'Certainty: ' + field.certainty, dd, 'field-note');
         if (!prefersNormalized(name) && field.normalized && field.normalized !== field.value) {
           element('span', 'Normalized: ' + field.normalized, dd, 'field-note');
@@ -317,8 +360,8 @@
       if (result.navigation) element('p', folderLabel(result.navigation.folder), heading, 'eyebrow');
       element('h2', displayValue(letter, 'sender') + ' → ' + displayValue(letter, 'recipient'), heading);
       element('p', displayValue(letter, 'date') + ' · ' + letter.scans.length + ' page(s)', heading, 'muted');
+      if (letter.sort_basis === 'filename hint') element('p', 'Filename hint · unverified', heading, 'field-note');
       const summary = element('section', null, root, 'letter-summary');
-      element('h3', 'Interpretive summary', summary);
       element('p', letter.summary || 'No summary is available for this letter yet.', summary);
       element('p', 'Each scan is paired with its transcription. Longer transcriptions scroll within their panel.', root, 'reading-help');
       const jobs = [], pages = new Map(letter.pages.map(page => [page.image_id, page]));

@@ -352,7 +352,7 @@ function catalogueFixture() {
   bundle.letters = [letter('late', 'A & B', '1900-01-01'), letter('other', 'Z', '1800'),
     letter('unknown', 'A & B', null), letter('early', 'A & B', '1899-05'),
     letter('hint', 'A & B', null, { metadata: {}, hints: { folder: 'A & B', date: '1898', sender: 'Hint sender' }, execution: 'unprocessed' }),
-    letter('ambiguous', 'A & B', 'May 1, 99', { metadata: { date: { value: 'May 1, 99', normalized: '1899-05-01', precision: 'day', certainty: 'uncertain' } }, hints: { folder: 'A & B', date: '1700' } }),
+    letter('ambiguous', 'A & B', 'May 1, 99', { metadata: { date: { value: 'May 1, 99', normalized: '1899-05-01', precision: 'day', certainty: 'uncertain' } }, hints: { folder: 'A & B', date: 'undated' } }),
     letter('same_date', 'A & B', '1900-01-01', { active: false })];
   return bundle;
 }
@@ -383,7 +383,7 @@ test('folder search covers folders and saved text with no truncation, and root i
   assert.equal(context(bundle).sandbox.listFolders('').folders[0].name, '.');
 });
 
-test('chronology rejects invalid and unsupported dates without overriding document evidence', () => {
+test('chronology rejects invalid dates and falls back from unsupported document dates to filenames', () => {
   const { sandbox } = context();
   for (const date of ['1900-02-29', '1899-13', '0000', '1899-04-31']) {
     assert.equal(sandbox.chronology_({ hints: { date } }).sort_basis, 'unknown');
@@ -393,7 +393,12 @@ test('chronology rejects invalid and unsupported dates without overriding docume
     { value: 'May 1, 99', normalized: '1899-05-01', precision: 'day', certainty: 'explicit' },
     { value: '1899', normalized: '1900', precision: 'year', certainty: 'inferred' },
     { value: '1899', normalized: '1899-01-01', precision: 'year', certainty: 'explicit' }
-  ]) assert.equal(sandbox.chronology_({ metadata: { date }, hints: { date: '1700' } }).sort_basis, 'unknown');
+  ]) {
+    const sorted = sandbox.chronology_({ metadata: { date }, hints: { date: '1700' } });
+    assert.equal(sorted.sort_basis, 'filename hint');
+    assert.equal(sorted.sort_date, '1700');
+    assert.equal(sandbox.chronology_({ metadata: { date }, hints: { date: 'undated' } }).sort_basis, 'unknown');
+  }
 });
 
 test('previous and next follow the complete folder order and stop at its boundaries', () => {
@@ -407,16 +412,113 @@ test('previous and next follow the complete folder order and stop at its boundar
   assert.equal(single.previous, null); assert.equal(single.next, null);
 });
 
-test('home loads collapsed folders automatically; search and return links expand matching folders', () => {
+test('filename fallback survives a new short-year reading without a date confirmation in both viewer modes', () => {
+  for (const publicMode of [false, true]) {
+    const bundle = catalogueFixture(), letter = bundle.letters.find(l => l.letter_id === 'ambiguous');
+    letter.metadata.date = { value: 'Aug 7 - 99', normalized: '1899-08-07', precision: 'day', certainty: 'explicit' };
+    letter.hints.date = '1899-08-07';
+    letter.catalogue_date = null; // A fresh transcription invalidated the old review.
+    const original = JSON.stringify(bundle), c = context(bundle, { publicMode }), f = frontend();
+    const result = c.sandbox.listFolders('');
+    assert.deepEqual(Array.from(result.folders[0].letters, l => l.letter_id), ['hint', 'early', 'ambiguous', 'late', 'unknown']);
+    const row = result.folders[0].letters[2];
+    assert.equal(row.sort_date, '1899-08-07'); assert.equal(row.sort_basis, 'filename hint');
+    f.catalogueCalls[0].success(result);
+    const loaded = c.sandbox.loadLetter('ambiguous');
+    assert.equal(loaded.letter.sort_basis, 'filename hint');
+    assert.equal(loaded.navigation.previous.letter_id, 'early');
+    assert.equal(loaded.navigation.next.letter_id, 'late');
+    f.sandbox.renderLetter(loaded);
+    const heading = f.ids.record.children.find(n => n.className === 'letter-heading');
+    assert.match(allNodes(heading).map(n => n.textContent).join('\n'), /1899-08-07/);
+    assert.match(allNodes(heading).map(n => n.textContent).join('\n'), /Filename hint · unverified/);
+    const details = f.ids.record.children.find(n => n.className === 'panel');
+    assert.match(allNodes(details).map(n => n.textContent).join('\n'), /Document date reading: Aug 7 - 99/);
+    assert.equal(JSON.stringify(bundle), original);
+  }
+});
+
+test('filename placement displays its actual date even when the unsupported model proposal differs', () => {
+  const bundle = fixture(), letter = bundle.letters[0];
+  letter.metadata.date = { value: 'Aug 7 - 99', normalized: '1999-08-07', precision: 'day', certainty: 'uncertain' };
+  letter.hints = { date: '1899-08-07' };
+  const c = context(bundle, { publicMode: true }), f = frontend();
+  f.catalogueCalls[0].success(c.sandbox.listFolders(''));
+  const nodes = allNodes(f.ids.results);
+  assert.ok(nodes.some(n => n.textContent === '1899-08-07'));
+  assert.ok(!nodes.some(n => n.textContent === '1999-08-07' || n.textContent === 'Not placed in chronology'));
+  assert.match(nodes.find(n => n.tag === 'a').attributes['aria-label'], /1899-08-07/);
+  const loaded = c.sandbox.loadLetter('ltr_one');
+  f.sandbox.renderLetter(loaded);
+  assert.equal(loaded.letter.metadata.date.normalized, '1999-08-07');
+  const evidence = f.ids.record.children.find(n => n.className === 'provenance');
+  assert.match(allNodes(evidence).map(n => n.textContent).join('\n'), /1999-08-07/);
+});
+
+test('supported document dates outrank filenames and filename precision is never expanded', () => {
+  const { sandbox } = context();
+  const metadata = { date: { value: 'May 1899', normalized: '1899-05', precision: 'month', certainty: 'explicit' } };
+  assert.equal(sandbox.chronology_({ metadata, hints: { date: '1900-01-01' } }).sort_date, '1899-05');
+  assert.equal(sandbox.chronology_({ metadata, hints: { date: '1900-01-01' } }).sort_basis, 'document');
+  for (const hint of ['1899', '1899-08', '1899-08-07']) {
+    const result = sandbox.chronology_({ metadata: { date: { value: '99', certainty: 'unknown' } }, hints: { date: hint } });
+    assert.equal(result.sort_date, hint); assert.equal(result.sort_basis, 'filename hint');
+  }
+  for (const hint of [null, '', 'undated', '1899-02-30', '99', '18990807']) {
+    assert.equal(sandbox.chronology_({ metadata: { date: { value: 'Aug 7 - 99' } }, hints: { date: hint } }).sort_basis, 'unknown');
+  }
+});
+
+test('catalogue snippets are bounded while full letter summaries stay intact in both modes', () => {
+  const bundle = fixture(), original = '  A saved summary.\n' + 'More detail about the letter. '.repeat(40);
+  bundle.letters[0].summary = original;
+  for (const publicMode of [false, true]) {
+    const c = context(bundle, { publicMode });
+    const row = c.sandbox.listFolders('').folders[0].letters[0];
+    assert.ok(Array.from(row.summary_snippet).length <= 360);
+    assert.match(row.summary_snippet, /^A saved summary\. More detail/);
+    assert.ok(row.summary_snippet.endsWith('…'));
+    assert.equal(row.summary, undefined); assert.equal(row.pages, undefined);
+    assert.equal(c.sandbox.searchLetters('').letters[0].summary_snippet, row.summary_snippet);
+    assert.equal(c.counts().imageReads, 0);
+    assert.equal(c.sandbox.loadLetter('ltr_one').letter.summary, original);
+    assert.equal(c.sandbox.summarySnippet_('😀'.repeat(361)), '😀'.repeat(359) + '…');
+    assert.equal(c.sandbox.summarySnippet_('x'.repeat(360)), 'x'.repeat(360));
+    for (const empty of [undefined, null, '', ' \n ', { text: 'internal' }]) assert.equal(c.sandbox.summarySnippet_(empty), '');
+  }
+});
+
+test('catalogue summary sits immediately below its letter across all columns as literal text', () => {
+  const bundle = fixture(), first = bundle.letters[0];
+  first.summary = '<img src=x onerror=bad()> & historical summary';
+  bundle.letters.push({ ...first, letter_id: 'ltr_two', summary: '' });
+  const f = frontend(); f.catalogueCalls[0].success(context(bundle).sandbox.listFolders(''));
+  const body = allNodes(f.ids.results).find(node => node.tag === 'tbody');
+  assert.equal(body.children.length, 3); // Letter, its summary, then letter without summary.
+  assert.ok(allNodes(body.children[0]).some(node => node.href && node.href.endsWith('?letter=ltr_one')));
+  const summary = body.children[1];
+  assert.equal(summary.className, 'catalogue-summary-row');
+  assert.equal(summary.children[0].colSpan, 4);
+  assert.ok(allNodes(summary).some(node => node.textContent === first.summary));
+  assert.equal(allNodes(summary).filter(node => node.tag === 'img' || node.tag === 'script').length, 0);
+  assert.equal(f.calls.length, 0); assert.equal(f.letterCalls.length, 0);
+});
+
+test('home opens the first folder by default; search and return links override the default', () => {
   const f = frontend(), result = context(catalogueFixture()).sandbox.listFolders('');
   assert.equal(f.catalogueCalls.length, 1); assert.equal(f.calls.length, 0);
   f.catalogueCalls[0].success(result);
   assert.equal(f.ids.results.children.length, 2);
-  assert.ok(f.ids.results.children.every(n => n.tag === 'details' && !n.open));
+  assert.ok(f.ids.results.children.every(n => n.tag === 'details'));
+  assert.equal(f.ids.results.children[0].open, true); assert.equal(f.ids.results.children[1].open, false);
   const text = allNodes(f.ids.results).map(n => n.textContent).join('\n');
   assert.match(text, /Hint sender/); assert.match(text, /Filename hint · unverified/); assert.doesNotMatch(text, /Retired record/);
-  const returned = frontend({ folder: 'A & B' }); returned.catalogueCalls[0].success(result);
-  assert.equal(returned.ids.results.children[0].open, true); assert.equal(returned.ids.results.children[1].open, false);
+  const returned = frontend({ folder: 'Z' }); returned.catalogueCalls[0].success(result);
+  assert.equal(returned.ids.results.children[0].open, false); assert.equal(returned.ids.results.children[1].open, true);
+  const missing = frontend({ folder: 'No longer listed' }); missing.catalogueCalls[0].success(result);
+  assert.equal(missing.ids.results.children[0].open, true); assert.equal(missing.ids.results.children[1].open, false);
+  f.sandbox.renderFolders(result, true);
+  assert.ok(f.ids.results.children.every(n => n.open));
   f.sandbox.loadFolders('old'); f.sandbox.loadFolders('new');
   f.catalogueCalls[2].success({ total: 0, folders: [] }); f.catalogueCalls[1].success(result);
   assert.match(f.ids.results.children[0].textContent, /No letters match/); // Ignore a slow, older response.

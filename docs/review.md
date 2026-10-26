@@ -186,7 +186,10 @@ Back up and reuse the collection store: a new empty store has no staff authority
 
 ## Confirm a catalogue date
 
-Two-digit years remain excluded from automatic chronology. After checking the intended date,
+Two-digit years remain excluded from document-based relationship chronology. For catalogue
+placement, the viewer now falls back to a valid filename date, labelled **Filename hint ·
+unverified**, even when a document date is abbreviated or uncertain. A staff confirmation is
+optional for that placement. To explicitly confirm the intended date after checking it,
 append a letter review with its current `base_revision`, a source explaining the confirmation,
 and the following field:
 
@@ -199,7 +202,9 @@ date metadata in the same review, preserving its actual source reading and evide
 confirmation saves the date evidence and review event and affects catalogue sorting only;
 relationship matching still follows the conservative document-date policy. It does not mark
 the whole document reviewed. Date or page corrections, changed scans and new service revisions
-invalidate the confirmation. Name-only corrections do not.
+invalidate the confirmation. Name-only corrections do not. A valid filename date continues to
+position the letter after a confirmation expires; this is a provisional catalogue hint, not
+carried-forward approval of the new reading.
 
 Re-export after catalogue changes. Remember that the CLI `export` command republishes reader
 files beside scans when publication was previously enabled for that store. For local-only

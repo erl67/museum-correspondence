@@ -174,7 +174,7 @@ function calendarDate_(input) {
 
 function chronology_(letter) {
   const date = (letter.metadata || {}).date || {};
-  // Match the export's conservative date policy; never expand ambiguous years.
+  // Prefer confirmed/supported document dates; filenames provide catalogue-only fallback.
   const normalized = calendarDate_(date.normalized);
   const lengths = { year: 4, month: 7, day: 10 };
   const confirmed = letter.catalogue_date;
@@ -188,8 +188,9 @@ function chronology_(letter) {
       (String(date.value || '').match(/\b\d{4}\b/g) || []).includes(normalized.slice(0, 4))) {
     return { sort_date: normalized, sort_basis: 'document' };
   }
-  // Filename dates are provisional, and cannot override an ambiguous document date.
-  const hint = !date.value && !date.normalized && calendarDate_((letter.hints || {}).date);
+  // An abbreviated, uncertain or unsupported document date must not block a valid
+  // filename date. Keep its provisional basis separate from document evidence.
+  const hint = calendarDate_((letter.hints || {}).date);
   return { sort_date: hint || '', sort_basis: hint ? 'filename hint' : 'unknown' };
 }
 
@@ -198,10 +199,21 @@ function compareLetters_(a, b) {
     a.letter_id.localeCompare(b.letter_id);
 }
 
+function summarySnippet_(summary) {
+  if (typeof summary !== 'string') return '';
+  const text = summary.replace(/\s+/g, ' ').trim();
+  const characters = Array.from(text);
+  if (characters.length <= 360) return text;
+  const excerpt = characters.slice(0, 359).join('');
+  const boundary = excerpt.lastIndexOf(' ');
+  return (boundary > excerpt.length / 2 ? excerpt.slice(0, boundary) : excerpt).trimEnd() + '…';
+}
+
 function letterRow_(letter) {
   const display = SETTINGS.PUBLIC_MODE ? publicLetter_(letter) : letter;
   return { letter_id: letter.letter_id, metadata: display.metadata, hints: display.hints,
     catalogue_names: display.catalogue_names, catalogue_date: display.catalogue_date,
+    summary_snippet: summarySnippet_(display.summary),
     execution: letter.execution, active: letter.active, page_count: (letter.scans || []).length,
     ...chronology_(letter) };
 }
@@ -243,6 +255,7 @@ function loadLetter(id) {
   const index = siblings.findIndex(item => item.letter_id === letter.letter_id);
   const displayLetter = SETTINGS.PUBLIC_MODE ? publicLetter_(letter) : { ...letter, scans: letter.scans.map(scan => ({ ...scan,
     mapping_status: !scan.drive_file_id && SETTINGS.SCAN_ROOT_FOLDER_ID ? 'folder_lookup' : scan.mapping_status })) };
+  Object.assign(displayLetter, chronology_(letter));
   const currentScanLetters = letter.active === false ? value.letters.filter(item => item.active !== false &&
     item.scans.some(scan => letter.scans.some(old => old.image_id === scan.image_id))).map(letterRow_) : [];
   const connections = SETTINGS.PUBLIC_MODE ? publicConnections_(value, id) : {

@@ -17,6 +17,13 @@ just to rerun. Reviews bound to an earlier reading, including the August 7 catal
 confirmation, require checking/rebasing against the new revision. Person authority records
 continue to apply as candidates and catalogue labels.
 
+With the 26 October viewer update, expired date confirmation does not leave a letter outside
+the chronology when its filename supplies a valid date. The viewer uses that date as a labelled
+filename hint whenever the document date cannot be placed. This works with current exported
+JSON and future reruns; it does not approve the new document date or change relationship checks.
+Install the updated `Code.gs` and `Viewer.html` once and deploy a new version for this sorting
+fix. Prompt/data-only reruns afterward still do not need viewer code changes.
+
 The actual export folder is `local/full-exports`, not a root `local-exports` directory.
 The pre-update snapshot is under `local/archives/20261025-before-prompt-1.1/`: current full
 exports, the prepared viewer deployment, full collection store, quota/config/grouping files,

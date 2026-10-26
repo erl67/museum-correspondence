@@ -141,12 +141,24 @@ Folder lookup uses the read-only [Drive Folder methods](https://developers.googl
 
 The start page lists every source folder represented in the export. Click its disclosure
 arrow or name (or use Enter/Space on the focused heading) to expand a complete table of dates,
-senders, recipients, page counts and reading availability. Folders begin collapsed. Unprocessed
+senders, recipients, page counts and reading availability. The first folder in the displayed
+list opens automatically; the rest begin collapsed. Search opens every matching folder, and
+returning from a letter opens its own folder instead. The `defaultFolderExpanded(folder, index)`
+function in Viewer.html holds the default rule for future changes. Unprocessed
 letters remain listed; retired records are excluded from browsing, search and previous/next
 navigation. Public mode also refuses old direct links. In restricted mode, those links open
 a labelled historical record with links to current letters containing its scans. Search folders, sender, recipient, date or
 saved text to show matching letters in expanded folders; **Show all** restores the full catalogue.
 The folder catalogue is not subject to the legacy search RPC's 100-result cap.
+
+Each letter's details row is followed by an inset interpretive-summary snippet spanning all
+four columns. Snippets normalize whitespace and are limited to 360 Unicode characters,
+ending at a word boundary where practical; an ellipsis marks shortened summaries. Letters
+without a summary omit this extra row. The full summary remains on the letter page.
+Snippets travel in the existing catalogue response, adding no RPCs, Drive reads or image
+downloads. They add bounded text payload and browser rendering work per letter; large
+catalogues still carry that cumulative cost. To install, replace both Code.gs and Viewer.html
+and deploy a new version. Existing JSON exports already contain summaries and need no refresh.
 
 Folder tables, accessible letter-link labels, letter headings and the details panel prefer
 staff catalogue names, then the saved normalized sender, recipient, attributed author and date. Dates use the export's
@@ -165,16 +177,26 @@ restricted to staff mode. See [review.md](../../docs/review.md#standard-catalogu
 Within each folder, letters run oldest first, using supported normalized document dates.
 Partial dates retain year/month precision and sort before more specific dates with the same
 prefix; equal dates use the stable archival ID as a deterministic tie-breaker. This display
-order does not establish the sequence of overlapping partial dates. When there is no document
-date, a valid filename date can position a letter and is explicitly labelled as an unverified
-hint. Ambiguous/unsupported document dates and undated records follow dated records; filename
-hints never override an ambiguous document date. Folder membership comes from the export,
+order does not establish the sequence of overlapping partial dates. When the document date
+cannot be used (including an abbreviated year, uncertain date, invalid normalization or missing
+date), a valid filename date positions the letter and is labelled **Filename hint · unverified**.
+The displayed catalogue date matches the date used to sort it; the document's original reading
+and evidence remain available in the details. Supported document dates and applicable staff
+confirmations take priority. Only records without either usable date follow dated records.
+Folder membership comes from the export,
 not live Drive folder discovery; empty folders without letters are not in that export.
 
 A separate, revision-bound staff catalogue-date confirmation can place an abbreviated date
 such as `Aug 7 - '99` at `1899-08-07`. The viewer labels it **Catalogue date confirmed**.
 This does not rewrite the source date or relax automatic relationship chronology. A later
-date/text correction or new service revision invalidates that confirmation.
+date/text correction or new service revision invalidates that confirmation. A valid filename
+date still supplies fallback placement afterward, without needing a new staff confirmation.
+
+For the 26 October filename-date fallback fix, replace **Code.gs and Viewer.html** and deploy
+a new version of the existing app. The current JSON already contains the filename dates; no
+JSON regeneration, re-upload or paid transcription is needed for this fix. Use the source
+files in `apps_script/viewer` (also refreshed in `local/viewer-deployment`). This replaces the
+earlier rule that refused filename fallback whenever any document date reading was present.
 
 For this catalogue update, replace **both Code.gs and Viewer.html**, preserve the configured
 IDs, and update the existing deployment version. Also replace the contents of the existing

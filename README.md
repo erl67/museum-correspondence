@@ -175,7 +175,8 @@ address in bookmarks and shared links. Apps Script deployment and script-editor 
 for maintenance; see the [viewer setup guide](apps_script/viewer/README.md).
 
 The [Apps Script viewer](apps_script/viewer/README.md) starts with expandable letter folders,
-each listing dates, senders and recipients in chronological order. Search filters the folders
+each listing dates, senders and recipients in chronological order, with an inset summary
+snippet beneath each letter's details when available. Search filters the folders
 by saved text and metadata. Retired groupings are excluded from browsing and navigation but
 remain accessible by ID for history only in restricted mode. Lists, letter headings and details prefer staff catalogue
 names, then saved normalized names and dates; original readings remain in the evidence panel.
@@ -186,7 +187,8 @@ and export commands reapply the saved names automatically, including to new lett
 responses. Keep using the same collection store; no repair script is needed for reruns.
 Known aliases no longer produce filename/name conflict warnings; ambiguous or different people
 still do. Date confirmations survive ordinary reruns but require review after a new transcription
-revision or changed evidence. Open a letter for its summary,
+revision or changed evidence. A valid filename date always provides labelled fallback catalogue
+placement when the document date cannot be used, including after such a rerun. Open a letter for its summary,
 then each original scan on the left and its matching transcription on the right.
 Letter details and connections follow the pages;
 previous/next letter and folder navigation appear at both top and bottom. It makes no

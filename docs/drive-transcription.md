@@ -123,7 +123,10 @@ unrecognized or ambiguous names still need review.
 The confirmed August 7, 1899 catalogue date survives inventory, export, skipped completed
 letters and reuse of the same saved revision. A genuinely new transcription (`--fresh`, or
 an expired cache with `--all`) requires rebasing that evidence-bound date confirmation. The
-program does not automatically approve a newly interpreted two-digit year. Retired groupings
+program does not automatically approve a newly interpreted two-digit year. The viewer still
+positions the letter using its valid filename date, labelled **Filename hint · unverified**,
+when the new document date cannot be used. This fallback does not need staff reconfirmation.
+Retired groupings
 remain inactive and excluded from current viewer listings; the journal retains their history.
 
 The `--all` and
