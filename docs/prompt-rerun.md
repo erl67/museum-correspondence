@@ -1,5 +1,8 @@
 # Rerun existing correspondence after a prompt update
 
+For everyday one-letter or selected-letter reruns, use [Rerunning letters](rerunning.md).
+This guide describes the collection-wide transition to prompt `correspondence-1.1`.
+
 The 25 October 2026 update, `correspondence-1.1`, improves the reading instructions for
 initials and correspondent identities, scientific/common bird names, difficult cursive,
 and plain-text dates. It uses the store's approved names/aliases as candidates, with visible
@@ -11,8 +14,10 @@ the defaults. Every attempt, including retries, still counts toward the allocati
 
 Use `local/full-collection` for this Drive collection. It preserves the current 21 active
 letters / 44 scans, two retired groups, grouping overrides, names, original responses and
-review history. A new reading gets a new revision ID and fingerprint; the `ltr_...` letter
-ID and `img_...` image IDs stay the same. Do not replace the store or change grouping/paths
+review history. A new reading gets a new revision ID. The prompt update changes its request
+fingerprint; an unchanged `--fresh` rerun can keep the same fingerprint. The `ltr_...` letter
+ID and `img_...` image IDs stay the same. [ID construction and retention](schema.md#identity-and-inventory)
+explain why. Do not replace the store or change grouping/paths
 just to rerun. Reviews bound to an earlier reading, including the August 7 catalogue-date
 confirmation, require checking/rebasing against the new revision. Person authority records
 continue to apply as candidates and catalogue labels.
@@ -71,7 +76,7 @@ them. The rerun recreates the original managed TXT paths and leaves the manual a
 It preserves unowned or staff-edited output files by refusing to overwrite them; resolve any
 such error before continuing publication.
 
-## Refresh and upload the viewer data
+## Refresh the viewer data
 
 After the batch, review the revised reports against the images, particularly the flagged
 Sutton and Percy passages. Do not assess improvement solely by counting uncertainty marks.
@@ -81,13 +86,17 @@ To regenerate all exports from the saved results without service requests:
 .\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" export --output "local/full-exports" --publish-text
 ```
 
-The fresh upload source is `local/full-exports/viewer.json`. Its synced copy is
+The current local source is `local/full-exports/viewer.json`. Its automatically published copy is
 `G:\My Drive\Correspondence\Correspondence_viewer.json`. Do not upload the older JSON
 in `local/viewer-deployment` or an archive; the normal export command does not refresh those.
+Publication already runs after each saved result and at normal batch completion. This final
+export is useful for recovery or after additional local changes; it is not required after
+every successful transcription. [Output updates](outputs.md) lists all refresh triggers.
 
 The Drive **file ID** used by Apps Script's `EXPORT_FILE_ID` is separate from archival letter
 IDs. Keep using the same Drive JSON file. Let Drive desktop finish syncing and compare its
-file ID with the configured value. If uploading manually, select that existing JSON in Drive,
+file ID with the configured value. No manual upload is needed when that synced file is the
+one configured in the viewer. If uploading manually, select that existing JSON in Drive,
 then **More → Manage versions → Upload new version**, choosing the fresh `viewer.json`.
 Google documents this workflow in [Drive file versions](https://support.google.com/drive/answer/2409045).
 Creating a separate file with the same filename does not select it in Apps Script.

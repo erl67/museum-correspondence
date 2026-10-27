@@ -4,6 +4,8 @@ from .catalogue import catalogue_names, resolved_name_conflicts
 from .schema import FIELDS, RELATIONS, date_interval, validate_document
 from .storage import identity
 
+DOCUMENT_REVIEW_FIELDS = ("summary", "notes", "entities")
+
 
 def current_records(store, inventory):
     results = store.current_results()
@@ -45,7 +47,7 @@ def current_records(store, inventory):
                 record["transcription_review"] = "in_progress"
                 record["metadata_review"] = "in_progress"
                 record["relationship_review"] = "in_progress"
-            elif correction.get("metadata"):
+            elif correction.get("metadata") or any(k in correction for k in ("notes", "entities")):
                 record["metadata_review"] = "in_progress"
                 record["relationship_review"] = "in_progress"
             doc["metadata"].update(deepcopy(correction.get("metadata", {})))
@@ -57,8 +59,9 @@ def current_records(store, inventory):
                                                 review_event=event["event_id"])
             for page in doc["pages"]:
                 page.update(deepcopy(correction.get("pages", {}).get(page["image_id"], {})))
-            if "summary" in correction:
-                doc["summary"] = correction["summary"]
+            for field in DOCUMENT_REVIEW_FIELDS:
+                if field in correction:
+                    doc[field] = deepcopy(correction[field])
             for field in ("metadata_review", "transcription_review", "relationship_review"):
                 if field in correction:
                     record[field] = correction[field]
@@ -133,8 +136,9 @@ def apply_review(store, inventory, patch):
             if iid not in pages or set(changes) - {"text", "status", "annotations"}:
                 raise ValueError("Page correction must target a supplied image and reading fields only")
             pages[iid].update(changes)
-        if "summary" in patch:
-            document["summary"] = patch["summary"]
+        for field in DOCUMENT_REVIEW_FIELDS:
+            if field in patch:
+                document[field] = deepcopy(patch[field])
         errors, _ = validate_document(document, record["image_ids"], record["hints"])
         if errors:
             raise ValueError("; ".join(errors))

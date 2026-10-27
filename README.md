@@ -1,13 +1,14 @@
 # Museum correspondence
 
-This application inventories scanned historical letters, prepares page-linked transcriptions,
-and builds a searchable local catalogue. Letters may be filed under different correspondents;
-local relationship matching searches the whole saved collection.
+Transcription and cataloguing of historical museum correspondence, with searchable text,
+structured metadata, and connections between letters. The application inventories scanned
+letters, reads their ordered pages, and builds a searchable catalogue. Letters may be filed
+under different correspondents; relationship matching searches the whole saved collection.
 
 Routine commands leave source scans unchanged. An explicitly authorized naming migration
 can rename files with byte verification and identity reconciliation. Filename names and dates
 are provisional hints. The document reading, normalized search values, and staff corrections
-remain separate. **A complete service response is not a verified historical transcription.**
+remain separate.
 
 The first version provides a Python command line and a small read-only Google Apps Script
 viewer. No source spreadsheet is needed. The current `test/inputs` contains 25 tracked JPEGs
@@ -15,6 +16,16 @@ in two correspondent folders, forming eight provisional letters with 2, 4, 2, 4,
 and 1 ordered pages. The original six scans remain byte-identical after their external move
 into `Shufeldt, Percy` and relabelling from A–D to numeric page suffixes. These are source
 fixtures, not verified reference transcriptions, and do not establish confirmed reply links.
+
+## Common tasks
+
+| Task | Guide |
+| --- | --- |
+| Reread one letter or a selected set | [Rerunning letters](docs/rerunning.md) |
+| Supply recognition notes for an individual writer | [Handwriting recognition and writer profiles](docs/handwriting.md) |
+| Understand how IDs are created and retained | [Letter IDs, image IDs and revisions](docs/schema.md#identity-and-inventory) |
+| Understand report and viewer updates | [Outputs and automatic updates](docs/outputs.md) |
+| Set up the Drive collection for the first time | [Drive transcription guide](docs/drive-transcription.md) |
 
 ## Scan filenames
 
@@ -111,13 +122,54 @@ unknown service outcome require inspection and explicit `--retry-interrupted`.
 Use `transcribe --pending` to process only letters without a current complete result,
 regardless of cache age. This is the usual continuation command after exporting saved work.
 
+## Handwriting recognition for individual writers
+
+Each request reads all pages of one letter together. The reading instructions compare
+repeated letterforms, capitals, joins and abbreviations across those pages, follow sentences
+across page breaks, and revisit difficult passages, names and technical terms.
+
+For a particular hand, an optional local profile supplies checked observations and up to five
+text examples tied to source image IDs and hashes. Select it with `--profile` on each command.
+The same profile applies to every letter selected by that command, so run different hands
+separately. Profiles supply text and source references; they do not attach sample image crops.
+Past transcriptions are not automatically learned or reused as handwriting examples.
+
+The store's names and aliases are supplied automatically as name candidates. Those name
+records are separate from handwriting profiles: identifying a sender does not select a hand.
+See [the handwriting guide](docs/handwriting.md) for profile creation, selection and versioning.
+
+## Rerun one letter
+
+List the saved letters and copy the complete `ltr_...` ID beside the desired scan filenames:
+
+```powershell
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" show
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" transcribe --letter "LETTER_ID_FROM_INVENTORY" --fresh --env-file .env --output "local/full-exports"
+```
+
+`--fresh` requests a new reading even when a recent result exists. Omit it to allow matching
+results up to 48 hours old to be reused. Repeat `--letter` to select several letters; add
+`--profile "local/handwriting/percy-v1.json"` only after creating that profile. Every selected
+letter is read in full. Unchanged scans need no new inventory.
+
+Keep the same store: a fresh reading receives a new `rev_...` revision under the existing
+`ltr_...` letter ID and `img_...` page IDs. A letter ID is initially derived from the collection
+namespace and exact folder/letter stem, then retained in the saved inventory. It does not
+encode the current transcription or revision. [Identifier details](docs/schema.md#identity-and-inventory)
+explain the construction and how renames/regrouping are handled.
+
+All reports refresh after each saved result. If `--publish-text` has been enabled for this
+store, the individual and combined Drive text files and `Correspondence_viewer.json` refresh
+too. Use `export` to rebuild outputs from saved readings without another transcription.
+See [rerun options and recovery](docs/rerunning.md) and [automatic updates](docs/outputs.md).
+
 ## Read, review, and connect letters
 
 Default outputs:
 
 | File | Use |
 | --- | --- |
-| `local/exports/readable/<source folder>/<letter filename>.txt` | Staff report: ordered letter text, annotations, separate plain-English notes and review status; no closing AI disclaimer or JSON sections |
+| `local/exports/readable/<source folder>/<letter filename>.txt` | Staff report: ordered letter text, annotations, separate plain-English notes and review status |
 | `local/exports/combined.txt` | All active letter readings in one text file |
 | `local/exports/letters/ltr_….txt` | Detailed diagnostic report with archival IDs, JSON evidence and technical provenance |
 | `local/exports/catalogue.csv` | One row per letter, including blocked/unprocessed/failed/retired records |
@@ -146,6 +198,9 @@ Unowned files, edited reports and scans are never overwritten. Only exact manage
 paths are excluded from later scan discovery. See the [Drive guide](docs/drive-transcription.md).
 Superseded managed Drive reports are archived in the local store before removal; edited
 reports block replacement or removal. Earlier paths remain in historical provenance.
+`review`, `match` and `reconcile-paths` save changes but require a subsequent `export` to
+refresh these files. The [output guide](docs/outputs.md) lists every trigger and destination,
+including viewer synchronization and prepared copies that are not refreshed automatically.
 
 ```powershell
 .\.venv\Scripts\python.exe -m correspondence show --letter "LETTER_ID_FROM_INVENTORY"
@@ -155,11 +210,14 @@ reports block replacement or removal. Earlier paths remain in historical provena
 ```
 
 Review JSON specifies the saved revision, corrected fields/text, reason/source and optional
-reviewer. Corrections are append-only. Metadata approval, word-for-word transcription approval,
+reviewer. To correct Separate Notes or extracted names/places/species, supply complete `notes`
+or `entities` arrays in the same revision-bound review; page edits do not update them
+automatically. See the [review walkthrough](docs/review.md#metadata-summaries-and-current-limits).
+Corrections are append-only. Metadata approval, word-for-word transcription approval,
 grouping and relationship review have separate states. New source pages or a new service
 revision leave prior corrections in history and require deliberate rebasing.
 Changing page text returns transcription, metadata and relationship review to `in_progress`;
-changing metadata returns metadata and relationship review to `in_progress`, unless the same
+changing metadata, notes or entities returns metadata and relationship review to `in_progress`, unless the same
 review explicitly sets their status. Moving source files outside this program leaves their
 old inventory paths marked missing; it never silently merges records by matching hashes.
 

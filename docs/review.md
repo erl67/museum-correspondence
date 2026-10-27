@@ -1,9 +1,17 @@
 # Local review workflow
 
-Use `show --letter "ltr_…"` or `local/exports/records.json` to find IDs, current revision IDs
-and evidence. Create review JSON under ignored `local/`, then run `review --file`.
-Every correction needs a `source` explaining its basis; `reviewer` is optional. The journal's
-timestamp supplies the correction date. Earlier events remain unchanged.
+To fix words in a saved transcription, start with
+[Correct a reading or metadata](#correct-a-reading-or-metadata). The walkthrough uses the
+production store `local/full-collection` and exports `local/full-exports`; the separate fixture
+store uses `local/collection` and `local/exports`. Keep the same store throughout a review.
+
+Create review JSON under ignored `local/reviews/`, then run `review --file`. Every correction
+needs a `source` explaining its basis; `reviewer` is optional. The journal's timestamp supplies
+the correction date. Earlier events and original service readings remain unchanged.
+`review` saves the change but does not regenerate reports. Run `match` when references have
+changed, then `export` with the same store/output arguments to refresh files and any remembered
+publication. See [output refresh triggers](outputs.md#when-files-refresh). To request a new
+reading instead of a local correction, see [Rerunning letters](rerunning.md).
 
 ## Group and order pages
 
@@ -65,26 +73,138 @@ references use the new paths. See [the naming guide](naming.md) for output clean
 
 ## Correct a reading or metadata
 
-Example shape (replace identifiers and source text):
+A review file records your changes against one saved transcription revision. The `show`,
+`review` and `export` commands below make no transcription-service requests. Review the scan
+alongside the current reading, then save corrections through this workflow. Local generated
+exports are rebuilt; edits to published reader copies can block refresh because publication
+protects edited files. Use review files for lasting changes and leave source scans untouched.
+
+### 1. Find the letter and its current reading
+
+Run in PowerShell:
+
+```powershell
+Set-Location "C:\Users\x5769\Documents\GitHub\museum-correspondence"
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" show
+```
+
+Find the scan filename in the listing and copy its letter's `ltr_...` ID. Use the active
+complete letter, not an older retired grouping containing one of the same scans. Replace
+`ltr_REPLACE` in the next command:
+
+```powershell
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" show --letter "ltr_REPLACE"
+```
+
+Copy these values from the displayed record:
+
+| Displayed value | Use in the review file |
+| --- | --- |
+| `letter_id` | `letter_id` |
+| `result.revision_id` | `base_revision` |
+| The selected page's `image_id` in `document.pages` | Key under `pages` |
+| The selected page's `text` in `document.pages` | Starting text to correct |
+
+Use the top-level `document.pages`, which includes applicable earlier corrections.
+`result.document` contains the original service reading and can omit those corrections.
+The record must have `active: true` and `execution: "complete"` for this walkthrough.
+No new inventory or transcription is needed to review an existing complete reading.
+
+### 2. Create a review file
+
+Create `local/reviews/` if needed. In a text editor, save a UTF-8 `.json` file there with a
+descriptive name, for example `percy-18991206-page1-20261027.json`. Its name is for your own
+organization; the IDs inside it determine which letter and page change.
+
+Use this structure, replacing every placeholder with the values and text from step 1:
 
 ```json
 {
   "kind": "letter",
   "letter_id": "ltr_REPLACE",
   "base_revision": "rev_REPLACE",
-  "source": "Compared with original scan at full resolution",
+  "source": "Compared page 1 with the scan; describe the words or passages corrected.",
   "reviewer": "Reviewer name",
   "pages": {
-    "img_REPLACE": {"text": "Complete corrected page text, including unchanged passages."}
+    "img_REPLACE": {
+      "text": "Complete corrected page text, including unchanged passages.\nThe next line goes here."
+    }
   },
-  "metadata_review": "in_progress",
   "transcription_review": "in_progress"
 }
 ```
 
-Page `text` replaces the whole page reading, not a substring. Optional `annotations` and
-`status` replace those page fields; do not omit existing annotations when replacing their
-array. The original service text always remains in the saved result.
+**The `text` field replaces the entire page.** Copy its complete current text first, then
+edit the words you checked. Supplying only a corrected sentence removes the remaining text
+from the reviewed page. Preserve line breaks, uncertainty marks and unchanged passages.
+
+Inside a JSON text string, `\n` represents a line break, `\"` represents a quotation mark,
+and `\\` represents a literal backslash. Do not put literal line breaks inside the quoted
+string. Use double quotes around keys and strings, commas between fields, and no trailing
+comma after the last field. Copying the existing JSON `text` value preserves its escaping.
+
+For several pages in the same letter, add entries under `pages`, each keyed by its own
+`image_id` and containing its complete corrected text. Include only pages you are changing.
+Use separate review files for different letters. Optional `annotations` and `status` replace
+those page fields; leave them out to retain them, and preserve unchanged annotations if
+replacing their array.
+
+Keep `transcription_review` as `in_progress` when only selected passages have been checked.
+Use `approved` only after reviewing the whole transcription. A page correction also returns
+metadata and relationship review to `in_progress`, because their evidence may have changed.
+
+### 3. Apply the correction and refresh the outputs
+
+Replace the example review filename with your own:
+
+```powershell
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" review --file "local/reviews/percy-18991206-page1-20261027.json"
+```
+
+After `review` succeeds, refresh the reports and published reader data:
+
+```powershell
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" export --output "local/full-exports" --publish-text
+```
+
+`review` appends the correction to the store but does not change reports immediately.
+`export` rebuilds the collection's reports and viewer JSON using the current corrections.
+`--publish-text` also updates managed reader files in the source folders, including
+`Correspondence_viewer.json`. Previously enabled publication is remembered even if the flag
+is omitted. Source scans and original service responses remain intact.
+
+Open the refreshed report under `local/full-exports/readable/` and check the corrected page.
+After Drive synchronization, reload the viewer to check it there. A data update to the same
+Drive JSON file does not require redeploying the viewer. See [output updates](outputs.md).
+
+If review fails, fix the reported issue before exporting. In particular, a stale
+`base_revision` means you must inspect the current reading again; changing the ID alone can
+apply an old whole-page replacement over newer text.
+
+### Later corrections and transcription reruns
+
+For another correction, create a new review file from the latest `show --letter` output,
+including earlier applicable corrections in the page text. Editing a review file after it
+was applied does not edit its saved event. Running `review` again appends another event;
+exporting again only refreshes outputs.
+
+| Later action | What happens to the correction |
+| --- | --- |
+| Export or reuse the same saved revision with unchanged scans | The correction continues to apply |
+| Obtain a new transcription revision | The earlier correction stays in history and needs checking/rebasing |
+| Change source content or page membership | Earlier corrections need checking against the changed evidence |
+
+Rebasing means reading the new page, carrying over only corrections still supported by the
+scan, and creating a new review with the new `result.revision_id`. Even a fresh request with
+the same settings creates a new revision. Do not copy an old complete page over the new one
+without comparing them.
+
+A page review does not create or update a handwriting profile. To use confirmed excerpts
+as reading context, add them to a [handwriting profile](handwriting.md), increase its version
+when changing a registered profile, and supply `--profile` on each transcription command
+that should use it. Profiles guide future readings; manual corrections change saved page text.
+
+### Metadata, summaries and current limits
 
 `metadata` is an object keyed by field name; supply the complete field object to replace it:
 
@@ -100,27 +220,50 @@ array. The original service text always remains in the saved result.
 ```
 
 Add this under the review's `metadata`. A date correction also needs `precision`.
-The corrected document must retain exact page coverage and the document schema.
-Use `approved` only after the corresponding work was actually checked. Approval leaves
-uncertainty/conflict reasons visible for future readers; it is not an assertion of perfection.
-Later page corrections reset transcription, metadata and relationship review to `in_progress`.
-Later metadata corrections reset metadata and relationship review to `in_progress`. The
-correction can explicitly approve a state when that updated work was checked. Earlier approval
-is retained in history, rather than automatically carried onto changed content.
-The first version requires a current structurally complete result for field/text correction;
-malformed failed responses remain readable but need a subsequent valid service result before
-using this correction operation. It does not silently import failures as complete.
+The corrected document must retain exact page coverage and the document schema. Metadata
+corrections return metadata and relationship review to `in_progress`. A correction can
+explicitly approve a state when that work has been checked; earlier approval remains in
+history. Approval does not remove uncertainty or conflict reasons from the record.
 
-After review:
+Field/text correction requires a current complete result. Failed or malformed responses
+remain in history, but need a subsequent complete reading before this operation can be used.
 
-```powershell
-.\.venv\Scripts\python.exe -m correspondence match
-.\.venv\Scripts\python.exe -m correspondence export
+An optional top-level `summary` string replaces the interpretive summary. Page corrections
+do not automatically revise metadata, summaries, extracted species/entities, references or
+notes. Include explicit top-level `notes` and `entities` arrays when those also need changing.
+Each supplied array replaces the entire corresponding list: copy the current list first and
+preserve unaffected entries. An empty array clears it. Omit the field to leave it unchanged.
+
+For example, add this field to a letter review, retaining any other current notes:
+
+```json
+{
+  "notes": [
+    "Prof. Holland is interpreted as William Jacob Holland (W. J. Holland), director of the Carnegie Museum."
+  ]
+}
 ```
 
-Metadata corrections do not trigger transcription. New service revisions require copying
-appropriate earlier corrections into a new review citing the new base revision. This is
-deliberate protection against applying old text to different scans.
+For `entities`, retain each object's `kind`, source `value`, `normalized`, `role`, `certainty`
+and page `evidence`. Correct its quote if the reviewed page text changed. A location inferred
+from other correspondence or an external source should be labelled inferred, with its basis
+and source recorded in the review's `source` and an explanatory note. Keep historical wording
+in the transcription; explanatory geography belongs in separate notes.
+
+Notes and entities are validated before saving, apply only to their `base_revision`, and
+return metadata and relationship review to `in_progress`. They do not change transcription
+approval on their own. Export refreshes the notes in reports/viewer data and entities in the
+local records/CSV. The current review command still has no correction fields for `references`
+or `translations`.
+
+If a change affects relationship evidence, recompute candidates before the export in step 3:
+
+```powershell
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" match
+```
+
+Matching uses the saved structured evidence; it does not extract new references from corrected
+page prose. Metadata corrections do not trigger transcription.
 
 ## Approved identities
 
@@ -191,10 +334,12 @@ placement, the viewer now falls back to a valid filename date, labelled **Filena
 unverified**, even when a document date is abbreviated or uncertain. A staff confirmation is
 optional for that placement. To explicitly confirm the intended date after checking it,
 append a letter review with its current `base_revision`, a source explaining the confirmation,
-and the following field:
+and add the `catalogue_date` field to that review object:
 
 ```json
-"catalogue_date": {"value": "1899-08-07", "precision": "day"}
+{
+  "catalogue_date": {"value": "1899-08-07", "precision": "day"}
+}
 ```
 
 This must agree with the current normalized date/precision. If those are wrong, correct the

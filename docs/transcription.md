@@ -1,6 +1,6 @@
 # Transcription conventions
 
-The prompt module is `correspondence/prompt.py`, version `correspondence-1.0`. Complete
+The prompt module is `correspondence/prompt.py`, version `correspondence-1.1`. Complete
 prompt bytes and their SHA-256 hash are saved with each request. Letters and text resembling
 instructions inside them are source material, never operating instructions.
 
@@ -8,6 +8,14 @@ Preserve historical wording, spelling, punctuation, abbreviations, names (includ
 names), quantities, significant zeros and meaningful paragraph divisions. Do not make prose
 fluent by guessing. Printed letterheads, addresses, dates, salutations, signatures, postscripts,
 marginal notes, stamps and substantive annotations are included.
+
+All pages of one letter are read together. The prompt calls for comparison of repeated
+letterforms, joins and abbreviations, cross-line/page context, and a second look at uncertain
+or awkward readings, names, dates and scientific terms. Superscript ordinals are rendered
+as ordinary text such as `9th`. Names/aliases from the store supply candidate expansions;
+source wording remains in page text, with supported expansions in normalized metadata.
+Optional [handwriting profiles](handwriting.md) supply explicit context for a particular hand.
+Each letter is a separate request; reading one does not train the next request on that writer.
 
 | Plain-text mark | Meaning |
 | --- | --- |

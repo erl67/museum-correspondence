@@ -9,11 +9,15 @@ node --test apps_script/viewer/test_viewer.cjs
 git diff --check
 ```
 
-Recorded on **2026-10-26**, Windows, Python **3.14.2**, Node **24.22.1**:
-**120 Python tests passed, 0 failed, 0 skipped; 55 viewer tests passed, 0 failed,
+Recorded on **2026-10-27**, Windows, Python **3.14.2**, Node **24.22.1**:
+**122 Python tests passed, 0 failed, 0 skipped; 55 viewer tests passed, 0 failed,
 0 skipped.** Pinned runtime dependencies were installed in this repository's `.venv`:
 google-genai 2.23.0, Pillow 12.3.0, tzdata 2026.3. The SDK emits a Python 3.14
 `_UnionGenericAlias` deprecation warning; it does not fail the suite.
+
+Notes/entity review regressions cover schema validation before append, explicit empty-array
+clearing, review-state resets, preserved source pages/results/journal history, local export
+propagation and expiry on a new revision. They use synthetic records and a fake transport.
 
 Catalogue-summary checks cover bounded Unicode snippets, retained full summaries, absent
 summaries, literal HTML-like text, placement under the correct letter and no extra image/RPC

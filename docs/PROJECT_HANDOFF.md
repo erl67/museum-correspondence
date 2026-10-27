@@ -29,6 +29,69 @@ during this resumed work.
 
 ## Responsibilities
 
+### Manual notes, entities and Percy corrections — 2026-10-27
+
+Letter reviews now support explicit replacement of `notes` and `entities` arrays alongside
+the existing page, metadata and summary fields. The same document validation runs before
+append; omitted arrays stay unchanged and empty arrays clear them. These changes reset
+metadata/relationship review to `in_progress`, preserve transcription approval unless pages
+change, and expire on a new service revision just like other letter corrections. Reports,
+viewer notes and local entity exports use the reviewed values. References and translations
+still have no manual replacement fields. README and the review walkthrough describe the flow.
+
+Three user-requested reviews were appended to `local/full-collection`: August 7, 1899 notes
+and entities now use S. forsteri and explain Prof. Holland as William Jacob Holland; the
+unsupported Brighton/Brightwood equivalence was removed from notes, summary and place
+normalization while retaining the source reading Brighton, Virginia. April 18, 1899 has a
+sourced, explicitly inferred location note for Smith Island near Cape Charles in Northampton
+County. March 21, 1901 page 4 uses the user's exact Northampton / not Northumberland wording,
+with the county entity's evidence aligned. The existing August page correction is preserved.
+Holland was already normalized in the August entity data; its explanatory note was missing.
+
+Review JSON is in `local/reviews/` with filenames ending `notes-20261027.json`,
+`smith-island-20261027.json` and `page4-20261027.json`. Backups and verification are in
+`local/manual-reviews-20261027/`; the guarded one-time helper is
+`local/apply_manual_reviews_20261027.py`. The prior journal prefix, all original results,
+inventory, blobs, quota and unrelated current records were checked unchanged. Local
+`local/full-exports` was refreshed using `export_all`; Drive publication was not run.
+No transcription requests, source-scan changes, deployment, commit or push occurred.
+Verification: **122 Python and 55 viewer tests passed, no failures/skips**.
+
+Deferred prompt work requested by the user: add concise approximate location explanations
+in Separate Notes where evidence supports them, and consistently explain supported person
+normalizations. Keep original names in source text; distinguish contextual inferences from
+established identifications, cite research sources when used, and avoid inventing historical
+equivalences between similar place names. Smith Island has namesakes, so preserve the basis
+for the inferred Virginia identification. The user intends to revisit the prompt later;
+this task made no prompt change or handwriting-profile update.
+
+### Operating documentation and terminology — 2026-10-26
+
+The README now links directly to individual reruns, handwriting recognition, identifier
+construction and output updates. `docs/rerunning.md` covers selecting saved IDs, `--fresh`,
+48-hour reuse, multiple letters, profile selection, unchanged-scan inventory reuse and
+recovery. `docs/outputs.md` documents each output, remembered publication, refresh triggers,
+Drive synchronization, mapping-only installations and the separate prepared deployment copy.
+
+`docs/handwriting.md` explains within-letter comparison and the optional text-only profile
+workflow. Profiles are explicitly selected for every command, frozen for a batch, versioned
+and applied to all selected letters; names/aliases are separate automatic context. There is
+no automatic writer learning, profile selection, sample-image retrieval or profile updating.
+`docs/schema.md` now gives exact UUID5 construction, retained inventory identity, UUID4 result
+revisions and request fingerprints. An unchanged fresh rerun keeps the fingerprint but creates
+a new revision. Store continuity preserves revisions, reconciled IDs and publication ownership.
+
+The Drive, prompt-rerun, review, configuration, transcription and viewer guides are aligned.
+Publication refreshes `Correspondence_viewer.json` after results, but does not refresh the
+prepared JSON in `local/viewer-deployment`. `review`, `match` and `reconcile-paths` need a later
+export. Same-file data updates need synchronization/reload; script/settings changes need
+redeployment. The user's neutral terminology preference is recorded in `AGENTS.md`.
+This update changes documentation and a comment only; operating behavior is unchanged.
+Verification: **120 Python and 55 viewer tests passed, no failures/skips**. Argument-only
+checks accepted 46 documented command examples; all 70 local documentation links/anchors
+resolved. A terminology scan passed across 58 tracked/new text files. No live transcription,
+collection export, Drive write, deployment, commit or push was performed.
+
 ### Catalogue summary snippets — 2026-10-26
 
 Catalogue rows now include a maximum 360-character interpretive-summary snippet from the
@@ -299,7 +362,7 @@ See [naming.md](naming.md) for staff rules and recovery details.
 
 ### Output cleanup and filename corrections — 2026-10-21
 
-Staff TXT reports no longer append the closing AI disclaimer. Existing local reports,
+Staff TXT reports no longer append the closing disclaimer. Existing local reports,
 including older generated filenames, were cleaned and the Drive reader copies refreshed.
 Current filename/reading conflict notes are recalculated from current hints; historical
 validation and request provenance remain unchanged in the saved results.

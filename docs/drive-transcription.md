@@ -10,6 +10,8 @@ they contain no JSON sections.
 Already transcribed the collection and want the improved reading prompt? Follow
 [Rerun after a prompt update](prompt-rerun.md). It uses the existing inventory and store;
 the first-time discovery and `--pending` instructions below do not refresh completed letters.
+To reread a particular letter, use [Rerunning individual letters](rerunning.md). For a specific
+writer's letterforms, see [Handwriting recognition and profiles](handwriting.md).
 
 ## 1. Open PowerShell in the project folder
 
@@ -62,6 +64,11 @@ when used, pass `--config "local/config.json"` before the command. The local fil
 this collection contains `{"daily_limit": 100}`. Do not put that setting in `.env`.
 
 ## 4. Check both subfolders before transcribing
+
+This is the first-time discovery step. For an already inventoried collection with unchanged
+scans, go straight to `show` and the [rerun commands](rerunning.md). Discovery walks every
+subfolder, including supporting material in `old/` or `analysis/`; review that scope before
+inventorying new scans. Those folder names are not automatic exclusions.
 
 ```powershell
 .\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" dry-run --input "G:\My Drive\Correspondence"
@@ -167,8 +174,9 @@ their old names are not recreated as placeholder reports.
 Local copies remain under `local/full-exports`: `readable` has the named staff reports,
 `combined.txt` has all active letters, and `catalogue.csv` is the index. The older
 `letters\ltr_....txt` files are detailed diagnostic reports with technical JSON sections.
-Keep `local/full-collection` backed up: it holds original responses and history. AI readings
-still need human checking against the scans.
+Keep `local/full-collection` backed up: it holds original responses, IDs and revision history.
+See [outputs and automatic updates](outputs.md) for the complete file list, refresh triggers
+and recovery if publication is interrupted.
 
 To regenerate the reports from saved results without any Gemini requests, run:
 
@@ -184,6 +192,10 @@ Use this canonical address for bookmarks and shared access links. The viewer rea
 viewer JSON internally and displays the letter text. Maintainers configure its Drive file IDs,
 collection scan folder (or explicit scan mappings), and deployment;
 saving the TXT files alone does not configure it. See [viewer setup](../apps_script/viewer/README.md).
+After each saved transcription, local outputs and remembered publication refresh. Let Drive
+finish syncing, then reload the viewer. Updating the contents of the same configured Drive
+JSON file needs no redeployment. The prepared JSON under `local/viewer-deployment` is not
+refreshed by these commands; use `local/full-exports/viewer.json` or its synced root copy.
 
 ## Corrected scan filenames
 

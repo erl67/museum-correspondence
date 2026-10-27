@@ -57,6 +57,26 @@ Search accepts the compact date or full filename through current filename hints,
 as normalized dashed dates. Regenerate the export after path reconciliation; preserve
 image IDs and byte hashes, and verify the actual Drive IDs when maintaining the mapping.
 
+## Automatic data updates after reruns
+
+When publication has been enabled for the collection store, each saved/reused transcription
+result and normal batch completion regenerates local `viewer.json` and copies it to
+`Correspondence_viewer.json` at the scan root. `inventory` and `export` also refresh it.
+`review`, `match` and `reconcile-paths` require a subsequent `export`. See the full
+[output/update guide](../../docs/outputs.md) and [individual-letter reruns](../../docs/rerunning.md).
+
+Drive for desktop synchronizes the root copy. Once sync finishes, the viewer's next requests
+read the updated file selected by `EXPORT_FILE_ID`. Reload an open catalogue/letter to see
+the new data; there is no continuous browser polling. Data changes under the same Drive file
+ID need no code deployment. Check that synchronization retained that ID; a newly created
+file with the same name is a different file. Changing `EXPORT_FILE_ID` requires redeployment.
+
+The current generated local bundle is `local/full-exports/viewer.json` for this collection.
+The prepared `local/viewer-deployment/Correspondence_viewer.json` and archived copies are
+not updated by routine commands. Use the current local or synced file for maintenance.
+With explicit per-image mappings, supply `--mapping` on a final export; inventory/transcription
+refreshes do not retain those mappings. The configured scan-root lookup needs no mapping file.
+
 ## Installation and access
 
 The three Drive IDs in Code.gs are prefilled with the IDs supplied by the user.
@@ -200,8 +220,9 @@ earlier rule that refused filename fallback whenever any document date reading w
 
 For this catalogue update, replace **both Code.gs and Viewer.html**, preserve the configured
 IDs, and update the existing deployment version. Also replace the contents of the existing
-viewer JSON file with the refreshed local export, preserving its Drive ID. The prepared copy
-is `local/viewer-deployment/Correspondence_viewer.json`. Code changes alone remove retired
+viewer JSON file with the refreshed local export, preserving its Drive ID. Use the current
+`local/full-exports/viewer.json` or its synced `Correspondence_viewer.json`; the prepared
+deployment copy can be older than the latest rerun. Code changes alone remove retired
 rows; the refreshed JSON supplies the standard names and confirmed catalogue date. Neither
 publication nor deployment is performed by preparing these local files.
 

@@ -47,6 +47,57 @@ class ReviewExportTests(Workspace):
         self.assertEqual(record["metadata_review"], "approved")
         self.assertEqual(record["transcription_review"], "unreviewed")
 
+    def test_notes_and_entities_review_exports_and_revision_expiry(self):
+        original = deepcopy(self.store.results())
+        before = self.store.journal.read_bytes()
+        iid = self.letter["image_ids"][0]
+        entities = [dict(kind="person", value="A.", normalized="Alice Example",
+                         role="mentioned", certainty="inferred",
+                         evidence=[dict(image_id=iid, quote="A.")])]
+        notes = ["A. is interpreted as Alice Example; synthetic review context."]
+        self.review(transcription_review="approved", metadata_review="approved",
+                    relationship_review="approved")
+        event = self.review(notes=notes, entities=entities, summary="Reviewed synthetic summary")
+        record = current_records(self.store, self.inventory)[0]
+        self.assertEqual(record["document"]["notes"], notes)
+        self.assertEqual(record["document"]["entities"], entities)
+        self.assertEqual(record["document"]["pages"], self.doc["pages"])
+        self.assertEqual(record["transcription_review"], "approved")
+        self.assertEqual(record["metadata_review"], "in_progress")
+        self.assertEqual(record["relationship_review"], "in_progress")
+        export_all(self.store, self.inventory, self.root / "exports")
+        letter = read_json(self.root / "exports/viewer.json")["letters"][0]
+        self.assertEqual(letter["notes"], notes)
+        exported = read_json(self.root / "exports/records.json")["records"][0]
+        self.assertEqual(exported["document"]["entities"], entities)
+        self.assertEqual(letter["summary"], "Reviewed synthetic summary")
+        report = (self.root / "exports/letters" / (self.letter["letter_id"] + ".txt")).read_text(encoding="utf-8")
+        self.assertIn(notes[0], report)
+        self.assertEqual(self.store.results(), original)
+        self.assertTrue(self.store.journal.read_bytes().startswith(before))
+        self.store.append("result", dict(self.result, revision_id="rev_after_notes"))
+        later = current_records(self.store, self.inventory)[0]
+        self.assertEqual(later["document"], self.doc)
+        self.assertIn(event["event_id"], later["stale_reviews"])
+
+    def test_notes_and_entities_validate_before_append_and_allow_explicit_clear(self):
+        for change in ({"notes": "not an array"}, {"notes": [42]},
+                       {"entities": None}, {"entities": [{}]},
+                       {"entities": [dict(kind="place", value="Town", normalized="Town",
+                                          role="mentioned", certainty="inferred",
+                                          evidence=[dict(image_id="img_absent", quote="Town")])]}):
+            with self.subTest(change=change):
+                before = self.store.journal.read_bytes()
+                with self.assertRaises(ValueError):
+                    self.review(**change)
+                self.assertEqual(self.store.journal.read_bytes(), before)
+        self.review(notes=["A reviewed note"], metadata_review="approved")
+        self.review(notes=[], entities=[])
+        record = current_records(self.store, self.inventory)[0]
+        self.assertEqual(record["document"]["notes"], [])
+        self.assertEqual(record["document"]["entities"], [])
+        self.assertEqual(record["metadata_review"], "in_progress")
+
     def test_later_changes_do_not_inherit_prior_approval(self):
         self.review(metadata_review="approved", transcription_review="approved", relationship_review="approved")
         self.review(pages={self.letter["image_ids"][0]: {"text": "Another synthetic correction"}})

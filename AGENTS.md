@@ -1,5 +1,9 @@
 # Repository instructions
 
+- Use neutral project terminology: transcription, handwriting recognition, model, or
+  transcription service. Refer to the assistant only as Codex when attribution is needed.
+  Keep documentation and reader-facing text free of promotional generation labels and
+  recurring verification disclaimers; describe actual behavior and limitations where relevant.
 - Work only in this repository. `museum-transcription` is a read-only reference, never a
   runtime dependency. Read `docs/PROJECT_HANDOFF.md`, relevant code/docs, Git status and diffs
   before changes; preserve local and unpushed work.

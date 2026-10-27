@@ -55,7 +55,7 @@ conservatively counted.
 
 ## Transport and retry boundaries
 
-The Google Gen AI SDK uses the fixed Developer API endpoint
+The Google Gemini Python SDK uses the fixed Developer API endpoint
 `https://generativelanguage.googleapis.com/`, API version `v1beta`, `vertexai=False`,
 millisecond timeout, SDK `retry_options.attempts=1`, disabled automatic function calling,
 and JSON response MIME type. One execution loop accounts for all requests. The pinned SDK's
@@ -81,19 +81,17 @@ letter must fit the configured payload/page bounds. There is no splitting or Fil
 The size bound is conservative and includes base64/JSON overhead, not a claim about a live
 account's token limits. Use an explicit smaller `max_edge` only after assessing legibility.
 
-Official references inspected on 2026-10-20:
-[image input](https://ai.google.dev/gemini-api/docs/image-understanding),
-[thinking levels](https://ai.google.dev/gemini-api/docs/thinking),
-[generateContent API](https://ai.google.dev/api/generate-content),
-[structured output](https://ai.google.dev/gemini-api/docs/structured-output),
-[Python SDK](https://googleapis.github.io/python-genai/).
-These describe transport capabilities, not this account's access or available quota.
+SDK reference inspected on 2026-10-20: [Python SDK](https://googleapis.github.io/python-genai/).
+This describes transport capabilities, not this account's access or available quota.
 
 ## Cache, interruption and recovery
 
 Cache identity covers ordered image IDs/paths/original and submitted contents, complete prompt,
 prompt/application/schema versions, exact hints, handwriting context and generation settings.
 Pacing, quota path and prices do not affect it. Stable letter IDs are independent.
+An unchanged `--fresh` rerun keeps this fingerprint and creates a new result revision.
+See [identifier construction](schema.md#identity-and-inventory), [individual reruns](rerunning.md)
+and [writer profiles](handwriting.md) for practical examples.
 
 Only the latest matching structurally complete result at most 48 hours old is eligible.
 A later failed result for that fingerprint prevents falling back to an earlier success.
