@@ -53,7 +53,17 @@ Review JSON is in `local/reviews/` with filenames ending `notes-20261027.json`,
 `local/manual-reviews-20261027/`; the guarded one-time helper is
 `local/apply_manual_reviews_20261027.py`. The prior journal prefix, all original results,
 inventory, blobs, quota and unrelated current records were checked unchanged. Local
-`local/full-exports` was refreshed using `export_all`; Drive publication was not run.
+`local/full-exports` was refreshed using `export_all`; Drive publication was not run
+in that initial correction step.
+
+Publication follow-up (2026-10-27): at the user's request, refreshed local exports,
+published all 25 managed reader files to `G:\My Drive\Correspondence`, and refreshed
+`local/viewer-deployment/Correspondence_viewer.json`. The local, Drive and prepared
+viewer JSON copies match. Browser inspection of `https://cmbirds.org/letters` confirmed
+the corrected Brighton summary in the catalogue and the Smith Island location note in
+the April 18 reader. No redeployment or transcription request was needed. All 44 source
+scan hashes, saved results, reviews, inventory and quota were preserved. Prior output
+copies and the verification audit are in `local/publication-refresh-20261027/`.
 No transcription requests, source-scan changes, deployment, commit or push occurred.
 Verification: **122 Python and 55 viewer tests passed, no failures/skips**.
 
