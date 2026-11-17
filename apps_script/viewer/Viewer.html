@@ -39,6 +39,7 @@
     .folder { margin: 14px 0; border: 1px solid #d8ddd3; border-radius: 8px; background: #fffdf8; }
     .folder > summary { cursor: pointer; padding: 20px 24px; font-size: 1.12rem; overflow-wrap: anywhere; }
     .folder > summary::marker { color: #37675b; }
+    .folder-divider { border: 0; border-top: 1px solid #d8ddd3; margin: 22px 12px; }
     .folder-count { font-size: .85rem; color: #61726a; margin-left: 14px; }
     .folder-help { margin: 0; padding: 0 24px 16px; font-size: .85rem; line-height: 1.5; color: #61726a; }
     .table-wrap { overflow-x: auto; }
@@ -109,7 +110,7 @@
     <section id="catalogue" hidden>
       <p class="eyebrow">Browse the archive</p>
       <h2>Letter folders</h2>
-      <p class="intro muted">Expand a folder to browse its letters in chronological order. Select a letter to read its summary, original pages, and transcription.</p>
+      <p class="intro muted">The folder with the latest transcription activity appears first. Expand a folder to browse its letters in chronological order. Select a letter to read its summary, original pages, and transcription.</p>
       <form id="search">
         <label for="query">Search folders, senders, recipients, dates, or saved text</label>
         <div class="search-controls"><input id="query" type="search" maxlength="200" placeholder="Search the collection…">
@@ -174,7 +175,7 @@
       if (name === 'date' && letter.catalogue_date) element('span', 'Catalogue date confirmed', parent, 'field-note');
     }
     function defaultFolderExpanded(folder, index) {
-      // Change this rule here if different people/folders should open by default later.
+      // The server puts the folder with the latest transcription activity first.
       return index === 0;
     }
     function renderFolders(result, searching) {
@@ -210,6 +211,9 @@
             const summary = element('p', null, cell, 'catalogue-summary');
             element('span', letter.summary_snippet, summary);
           }
+        }
+        if (!searching && index === 0 && folder.is_latest && result.folders.length > 1) {
+          element('hr', null, root, 'folder-divider');
         }
       }
     }

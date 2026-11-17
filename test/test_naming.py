@@ -13,6 +13,26 @@ from .helpers import Clock, FakeTransport, Workspace, jpeg, response
 
 
 class NamingTests(Workspace):
+    def test_underscore_date_separator_keeps_people_pages_and_exact_groups(self):
+        self.setup_letter(('Smith,H-Todd_19040624_01.jpg', 'Smith,H-Todd_19040624_02.jpg',
+                           'Todd-Smith,D_19040123_01.jpg'))
+        self.assertEqual(len(self.inventory['letters']), 2)
+        self.assertTrue(all(l['grouping'] == 'provisional' for l in self.inventory['letters']))
+        first = self.inventory['letters'][0]
+        self.assertEqual(first['hints']['sender'], 'Smith,H')
+        self.assertEqual(first['hints']['recipient'], 'Todd')
+        self.assertEqual(first['hints']['date'], '1904-06-24')
+        self.assertEqual(len(first['image_ids']), 2)
+        self.assertEqual(self.inventory['letters'][1]['hints']['recipient'], 'Smith,D')
+        self.assertEqual(canonical_stem('Todd-Smith,D_19040123'), 'Todd-Smith,D-19040123')
+        self.assertEqual(filename_hints('Todd-Smith,D_19040230'), {})
+        # Different exact stems still require review; this is not an automatic merge.
+        jpeg(self.inputs / 'Smith,H-Todd-19040624_01.jpg')
+        updated = discover(self.inputs, self.inventory)
+        smith = [l for l in updated['letters'] if l['hints'].get('sender') == 'Smith,H']
+        self.assertEqual(len(smith), 2)
+        self.assertTrue(all(l['grouping'] == 'needs_review' for l in smith))
+
     def test_compact_dates_partial_dates_and_unknown(self):
         for token, expected in [('18990807', '1899-08-07'), ('189908', '1899-08'),
                                 ('1899', '1899'), ('undated', None),

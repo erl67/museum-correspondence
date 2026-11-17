@@ -24,6 +24,12 @@ Local per-letter reports and structured exports also retain retired records. Com
 and Drive per-letter publication use active letters; the public viewer exposes active letters.
 A status report is generated even when a complete reading is unavailable.
 
+The viewer bundle includes `processed_at` from the latest recorded attempt end for each letter,
+including failed and incomplete readings. The viewer uses it to put the folder with the latest
+activity first. `transcribed_at` still records the saved time of a current complete reading
+and supports older viewer deployments. Refresh existing data with `export` to pick up the new
+field from the saved journal without making a transcription request.
+
 Current generated files are rebuilt, not edited in place as authoritative records. Make
 lasting text/metadata changes through the [review workflow](review.md), then export. Local
 export files may be overwritten; obsolete local filenames are not automatically removed.

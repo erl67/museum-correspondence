@@ -227,7 +227,18 @@ function searchLetters(query) {
 
 function listFolders(query) {
   const { value } = bundle_();
-  const matches = matchingLetters_(value.letters.filter(letter => letter.active !== false), query);
+  const active = value.letters.filter(letter => letter.active !== false);
+  const matches = matchingLetters_(active, query);
+  // Use finished processing attempts, including failures. Accept older exports.
+  // Compute across all active letters so search does not change folder priority.
+  const recency = new Map();
+  for (const letter of active) {
+    const timestamp = letter.processed_at || (letter.execution === 'complete' ? letter.transcribed_at : null);
+    const stamp = typeof timestamp === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(timestamp) ? Date.parse(timestamp) : NaN;
+    if (Number.isFinite(stamp)) recency.set(folderOf_(letter), Math.max(recency.get(folderOf_(letter)) ?? -Infinity, stamp));
+  }
+  const compareFolders = (a, b) => (recency.get(b) ?? -Infinity) - (recency.get(a) ?? -Infinity) || a.localeCompare(b);
+  const newest = [...recency.keys()].sort(compareFolders)[0];
   const folders = new Map();
   for (const letter of matches) {
     const name = folderOf_(letter);
@@ -237,8 +248,9 @@ function listFolders(query) {
   // Retired groupings remain accessible by ID only in restricted reader mode.
   // Only lightweight metadata is sent; page text and images load on the letter view.
   return { total: matches.length, folders: [...folders.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, letters]) => ({ name, letters: letters.sort(compareLetters_).map(letterRow_) })) };
+    .sort(([a], [b]) => compareFolders(a, b))
+    .map(([name, letters]) => ({ name, is_latest: name === newest,
+      letters: letters.sort(compareLetters_).map(letterRow_) })) };
 }
 
 function selectLetter_(value, id) {

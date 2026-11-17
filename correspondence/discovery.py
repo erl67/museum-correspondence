@@ -38,7 +38,7 @@ def inspect_file(path, root, collection, previous):
     return row
 
 
-def discover(root, previous=None, overrides=None, generated_paths=()):
+def discover(root, previous=None, overrides=None, generated_paths=(), folders=None):
     root = Path(root).resolve()
     if not root.is_dir():
         raise ValueError(f"Input root is not an accessible directory: {root}")
@@ -47,23 +47,46 @@ def discover(root, previous=None, overrides=None, generated_paths=()):
         raise ValueError("This store belongs to another input root; use a separate --store.")
     collection = previous.get("collection_id", str(uuid.uuid5(uuid.NAMESPACE_URL, str(root))))
     old_images = {i["path"]: i for i in previous.get("images", [])}
+    # A targeted refresh keeps the collection root/IDs and unvisited inventory intact.
+    selected = []
+    for name in folders or []:
+        path = Path(name)
+        if path.is_absolute() or path.drive or not path.parts or any(p in {".", ".."} for p in path.parts):
+            raise ValueError("Selected folder must be a relative subfolder of the input root")
+        target = root / path
+        if not target.resolve().is_relative_to(root) or not target.is_dir():
+            raise ValueError("Selected folder must exist inside the input root")
+        if any(p.is_symlink() or p.is_junction() for p in [target, *target.parents] if p != root and p.is_relative_to(root)):
+            raise ValueError("Selected folder cannot traverse a symlink or junction")
+        selected.append(path.as_posix())
+    selected = sorted(set(selected))
+    selected = [name for name in selected if not any(name.startswith(other + "/") for other in selected if other != name)]
+
+    def in_scope(path):
+        return not selected or any(path.startswith(name + "/") for name in selected)
+
     images = []
     # Only exact files owned by this store's publication manifest are excluded.
     generated = set(generated_paths)
     # walk raises on inaccessible directories instead of silently dropping their contents.
     def walk_error(error):
         raise error
-    for folder, dirs, files in root.walk(on_error=walk_error, follow_symlinks=False):
-        for directory in list(dirs):
-            if (folder / directory).is_symlink() or (folder / directory).is_junction():
-                files.append(directory)
-                dirs.remove(directory)
-        for name in sorted(files):
-            if (folder / name).relative_to(root).as_posix() in generated:
-                continue
-            images.append(inspect_file(folder / name, root, collection, old_images))
+    for scan_root in [root / name for name in selected] if selected else [root]:
+        for folder, dirs, files in scan_root.walk(on_error=walk_error, follow_symlinks=False):
+            for directory in list(dirs):
+                if (folder / directory).is_symlink() or (folder / directory).is_junction():
+                    files.append(directory)
+                    dirs.remove(directory)
+            for name in sorted(files):
+                # Windows folder presentation metadata is not a collection document.
+                if name.casefold() == "desktop.ini":
+                    continue
+                if (folder / name).relative_to(root).as_posix() in generated:
+                    continue
+                images.append(inspect_file(folder / name, root, collection, old_images))
     present = {i["path"] for i in images}
-    images += [dict(i, status="missing") for p, i in old_images.items() if p not in present]
+    images += [dict(i, status="missing") if in_scope(p) else deepcopy(i)
+               for p, i in old_images.items() if p not in present]
     images.sort(key=lambda i: i["path"])
     by_path = {i["path"]: i for i in images}
     names = Counter(i["filename"].casefold() for i in images if i["status"] != "missing")
@@ -163,5 +186,13 @@ def discover(root, previous=None, overrides=None, generated_paths=()):
                     letter["grouping"] = "needs_review"
     active_ids = {l["letter_id"] for l in letters}
     letters += [dict(l, active=False, grouping="retired") for lid, l in old_letters.items() if lid not in active_ids]
+    if selected:
+        by_id = {i["image_id"]: i for i in images}
+        for index, letter in enumerate(letters):
+            old = old_letters.get(letter["letter_id"])
+            if (old and all(old.get(k) == letter.get(k) for k in ("active", "group_key", "image_ids", "override"))
+                    and all(not in_scope(by_id[iid]["path"]) for iid in letter["image_ids"])):
+                # Do not recalculate review flags/hints for an unvisited group.
+                letters[index] = deepcopy(old)
     return dict(schema_version=1, collection_id=collection, input_root=str(root), images=images,
                 letters=letters, overrides=deepcopy(overrides))

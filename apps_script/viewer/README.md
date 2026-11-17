@@ -77,6 +77,28 @@ not updated by routine commands. Use the current local or synced file for mainte
 With explicit per-image mappings, supply `--mapping` on a final export; inventory/transcription
 refreshes do not retain those mappings. The configured scan-root lookup needs no mapping file.
 
+## Folder order and shared correspondents
+
+Folders sort by their latest finished transcription attempt, newest first, even when the
+folder has only failed or incomplete readings. The first
+folder opens automatically, with a small horizontal divider beneath it when other folders
+exist. Returning from a letter still opens its own folder; search opens all matching folders
+and omits the divider. Search retains each folder's priority from the full active collection.
+Letters within each folder remain oldest first, using the existing catalogue-date rules.
+People sharing a source folder share one chronology but keep separate sender/recipient names.
+
+Python exports include `processed_at` from the last recorded attempt end for each letter.
+Exports, reviews, inventory and cache reuse do not create processing activity. Retired letters
+are excluded from folder order. Equal timestamps use folder names as a tie-breaker. Folders
+without usable timestamps follow alphabetically. Older exports fall back to `transcribed_at`
+for completed readings until refreshed. Public responses expose a newest-folder flag and keep
+the underlying timestamps and result provenance private.
+
+To install this change, replace **Code.gs** and **Viewer.html**, preserve the configured IDs,
+and update the existing deployment to a new version. Run `export` once with the updated
+Python code to refresh the viewer JSON from saved activity. Normal inventory or transcription
+also refreshes it. The existing managed publication and Drive sync handle the file copy.
+
 ## Installation and access
 
 The three Drive IDs in Code.gs are prefilled with the IDs supplied by the user.

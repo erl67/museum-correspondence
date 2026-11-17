@@ -53,6 +53,39 @@ configured day; billing exhaustion stops immediately. A damaged/unwritable count
 requests rather than silently resetting. A reserved but unsent attempt after a crash remains
 conservatively counted.
 
+## Opt-in Gemini 3.8 Flash
+
+The existing global `--config` option selects an alternate model explicitly. The prepared
+ignored `local/config-gemini-3.8-flash.json` uses `gemini-3.8-flash`, high thinking,
+**one attempt per letter**, **20 attempts per day**, and 2 starts/minute. For a new checkout,
+copy `docs/config-gemini-3.8-flash.example.json` to that local path. The regular configuration
+and default model remain unchanged.
+
+```powershell
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" --config "local/config-gemini-3.8-flash.json" transcribe --pending --env-file .env --output "local/full-exports" --publish-text
+```
+
+This command sends requests; it does not need another inventory. `--pending` skips complete
+readings even if they came from another model. All pages of each letter are sent together,
+so the 14-letter Smith batch needs 14 calls if each succeeds on the first attempt. With
+`attempts: 1`, neither service retries nor format-correction requests happen automatically.
+A service failure may stop the batch; a later invocation can retry unfinished letters.
+Increasing `attempts` permits retries, but they all consume the same daily allocation.
+
+Both configurations use the existing `local/quota.json`; counters are keyed by model and
+persist across runs. The 3.5 Flash-Lite counter is preserved. The 20-attempt setting is the
+user's chosen local cap, not a verified account entitlement. Other applications/machines
+may consume the same project's quota outside this counter. Google documents project-scoped
+limits and midnight Pacific daily resets; check the project's actual availability in
+[AI Studio](https://aistudio.google.com/rate-limit).
+
+For this exact model, `Config.generation()` omits temperature from both the transmitted
+payload and request provenance, following Google's [3.8 migration guidance](https://aistudio.google.com/docs/whats-new-gemini-3.8#migrate-to-gemini-3-8-flash).
+Leave the local temperature default at 1.0; it is not sent for 3.8. A non-default temperature
+or `minimal` thinking is rejected locally. The normal 3.5 Flash-Lite request still sends
+temperature 1.0. Image preparation, page order, JSON output, hashes/history and disabled SDK
+retries remain unchanged. No automatic model fallback or price assumptions are added.
+
 ## Transport and retry boundaries
 
 The Google Gemini Python SDK uses the fixed Developer API endpoint

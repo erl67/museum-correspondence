@@ -1,0 +1,8 @@
+{
+  "model": "gemini-3.8-flash",
+  "thinking_level": "high",
+  "attempts": 1,
+  "daily_limit": 20,
+  "rpm": 2,
+  "quota_file": "local/quota.json"
+}

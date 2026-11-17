@@ -21,6 +21,7 @@ fixtures, not verified reference transcriptions, and do not establish confirmed 
 
 | Task | Guide |
 | --- | --- |
+| Add a newly scanned correspondent folder | [Add a batch to the existing collection](docs/drive-transcription.md#add-a-new-folder-to-the-existing-collection) |
 | Reread one letter or a selected set | [Rerunning letters](docs/rerunning.md) |
 | Supply recognition notes for an individual writer | [Handwriting recognition and writer profiles](docs/handwriting.md) |
 | Understand how IDs are created and retained | [Letter IDs, image IDs and revisions](docs/schema.md#identity-and-inventory) |
@@ -77,8 +78,9 @@ For existing completed letters, use [Rerun after a prompt update](docs/prompt-re
 .\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" inventory --input "G:\My Drive\Correspondence" --output "local/full-exports"
 ```
 
-Check that the selected root contains the intended scans. Every unsupported/unreadable file
-remains visible. Files in different folders are not merged just because the names/dates match.
+Check that the selected root contains the intended scans. Windows `desktop.ini` folder settings
+are skipped; other unsupported/unreadable files
+remain visible. Files in different folders are not merged just because the names/dates match.
 Ambiguous groups require a [reviewed grouping override](docs/review.md) before transcription.
 
 ## Transcribe when ready
@@ -121,6 +123,13 @@ requests another transcription and retains previous revisions. Interrupted reque
 unknown service outcome require inspection and explicit `--retry-interrupted`.
 Use `transcribe --pending` to process only letters without a current complete result,
 regardless of cache age. This is the usual continuation command after exporting saved work.
+Failed readings print their saved error details in the terminal. If the batch stops, an
+explicit message says that remaining letters were not attempted. A 503 high-demand response
+can exhaust the bounded retries; retry `--pending` later without inventorying again.
+
+To explicitly try Gemini 3.8 Flash, use the [alternate-model configuration](docs/configuration.md#opt-in-gemini-38-flash).
+Its example uses one attempt per letter and a 20-attempt daily allocation. The normal model
+remains `gemini-3.5-flash-lite`; models never switch automatically.
 
 ## Handwriting recognition for individual writers
 
@@ -233,7 +242,8 @@ address in bookmarks and shared links. Apps Script deployment and script-editor 
 for maintenance; see the [viewer setup guide](apps_script/viewer/README.md).
 
 The [Apps Script viewer](apps_script/viewer/README.md) starts with expandable letter folders,
-each listing dates, senders and recipients in chronological order, with an inset summary
+ordered by the latest recorded transcription attempt in each folder, including failed and incomplete readings. The newest opens automatically,
+with a small divider before the others. Each lists dates, senders and recipients in chronological order, with an inset summary
 snippet beneath each letter's details when available. Search filters the folders
 by saved text and metadata. Retired groupings are excluded from browsing and navigation but
 remain accessible by ID for history only in restricted mode. Lists, letter headings and details prefer staff catalogue

@@ -12,7 +12,7 @@ from correspondence.images import prepare_request
 from correspondence.profiles import load_profile, register_profile
 from correspondence.review import apply_review, current_records, people
 from correspondence.storage import atomic_json, read_json
-from .helpers import Workspace, FakeTransport, Clock, jpeg, response
+from .helpers import Workspace, FakeTransport, Clock, ServiceError, jpeg, response
 
 
 class ReviewExportTests(Workspace):
@@ -46,6 +46,39 @@ class ReviewExportTests(Workspace):
         record = current_records(self.store, self.inventory)[0]
         self.assertEqual(record["metadata_review"], "approved")
         self.assertEqual(record["transcription_review"], "unreviewed")
+
+    def test_viewer_recency_uses_finished_attempts_including_failures(self):
+        output = self.root / "exports"
+        original = self.store.journal.read_bytes()
+        first_end = self.store.latest("attempt_end")["ended_at"]
+        for _ in range(2):
+            export_all(self.store, self.inventory, output)
+            letter = read_json(output / "viewer.json")["letters"][0]
+            self.assertEqual(letter["processed_at"], first_end)
+            self.assertEqual(letter["transcribed_at"], self.result["saved_at"])
+        self.assertEqual(self.store.journal.read_bytes(), original)
+        self.review(summary="Reviewed summary")
+        export_all(self.store, self.inventory, output)
+        self.assertEqual(read_json(output / "viewer.json")["letters"][0]["processed_at"], first_end)
+        config = replace(self.config, attempts=1)
+        clock = Clock()
+        transcribe(self.store, self.letter, self.request, config,
+                   lambda: FakeTransport([ServiceError(503)]), fresh=True,
+                   quota=Quota(config, clock.time, clock.sleep))
+        failed_end = self.store.latest("attempt_end")["ended_at"]
+        export_all(self.store, self.inventory, output)
+        letter = read_json(output / "viewer.json")["letters"][0]
+        self.assertEqual(letter["execution"], "failed")
+        self.assertEqual(letter["processed_at"], failed_end)
+        self.assertIsNone(letter["transcribed_at"])
+        # Reselecting an older saved reading adds no processing activity.
+        self.store.select(self.result, "run_reused")
+        jpeg(self.inputs / self.inventory["images"][0]["path"], "red")
+        updated = discover(self.inputs, self.inventory)
+        export_all(self.store, updated, output)
+        letter = read_json(output / "viewer.json")["letters"][0]
+        self.assertEqual(letter["processed_at"], failed_end)
+        self.assertIsNone(letter["transcribed_at"])
 
     def test_notes_and_entities_review_exports_and_revision_expiry(self):
         original = deepcopy(self.store.results())

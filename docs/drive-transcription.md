@@ -1,7 +1,7 @@
 # Transcribe the Drive collection on Windows
 
 Use `G:\My Drive\Correspondence` as the input folder. The program searches its subfolders
-automatically, so one run includes both correspondent folders. It currently accepts JPEG
+automatically, so one run can include all correspondent folders. It currently accepts JPEG
 files (`.jpg` and `.jpeg`). It groups pages into letters within each folder and writes one
 UTF-8 `.txt` report per letter, with page boundaries, plus combined text files. Readable
 reports show the actual letter text before plain-English catalogue details and review notes;
@@ -12,6 +12,72 @@ Already transcribed the collection and want the improved reading prompt? Follow
 the first-time discovery and `--pending` instructions below do not refresh completed letters.
 To reread a particular letter, use [Rerunning individual letters](rerunning.md). For a specific
 writer's letterforms, see [Handwriting recognition and profiles](handwriting.md).
+
+## Add a new folder to the existing collection
+
+Keep the collection root and `local/full-collection` store. Use `--folder` to discover just
+the new subfolder, preserving other saved inventory, IDs, readings and grouping overrides.
+Repeat `--folder` for several exact relative folder names. The option includes nested folders;
+it is not remembered, and does not check for changes or missing scans in unvisited folders.
+Without it, discovery still walks the entire root, including `old/` and `analysis/` copies.
+Do not change `--input` to the new subfolder: that would change the collection root.
+Windows `desktop.ini` folder settings are skipped; other unsupported files remain visible.
+
+For the Smith batch checked on 2026-11-17, there are **25 JPEG pages in 14 letters**.
+`Smith,D` identifies **Daisy Smith** and `Smith,H` identifies **Herbert Smith**. Those two
+user-supplied name records are now registered in the existing local store, alongside
+**W.E. Clyde Todd**. Names remain separate from handwriting profiles and letter approval.
+One shared folder gives all three people's exchanges one chronological list; sender and
+recipient labels still use their individual catalogue names. Unknown or conflicting readings
+need review rather than being assigned an identity from the folder name.
+
+From PowerShell:
+
+```powershell
+Set-Location "C:\Users\x5769\Documents\GitHub\museum-correspondence"
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" dry-run --input "G:\My Drive\Correspondence" --folder "Smith, Daisy-and-Herbert"
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" inventory --input "G:\My Drive\Correspondence" --folder "Smith, Daisy-and-Herbert" --output "local/full-exports"
+```
+
+Check the ordered pages before inventorying. The dry run makes no requests or store changes.
+Inventory refreshes local reports and, because publication is already enabled for this store,
+the managed Drive text and viewer files too. Earlier letters remain in the combined catalogue.
+Use the existing `.env` file for the next step; do not replace it with the example.
+
+```powershell
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" transcribe --pending --env-file .env --output "local/full-exports" --publish-text
+```
+
+This final command sends images to the transcription service and can incur charges.
+At the batch check, all 21 existing active letters had complete readings, so after the targeted
+inventory only the 14 Smith letters should need transcription. `--pending` selects unfinished
+letters across the whole store; it is not a folder filter. It skips completed readings regardless
+of age. Repeat that command to continue after an ordinary pause; inspect unknown interrupted
+outcomes before using `--retry-interrupted`. Do not use `--all` or `--fresh` for this addition.
+
+Results refresh after each saved letter. Let Drive finish syncing, then reload
+[cmbirds.org/letters](https://cmbirds.org/letters). The Smith folder will move first after a
+recorded transcription attempt, even if the attempt fails. The folder-priority update also requires replacing **Code.gs** and
+**Viewer.html** in Apps Script and updating the existing deployment to a new version.
+Inventory/transcription/export with the updated Python code supplies the required timestamps;
+there is no need to transcribe the older letters again. See the [viewer guide](../apps_script/viewer/README.md#folder-order-and-shared-correspondents).
+
+If the service returns 503/high demand for every retry, the batch stops and saves the failure.
+The terminal now prints the actual saved error and the batch-stop message. Resume later with
+the same `transcribe --pending` command. After the failed or successful attempt is saved and
+exported, let Drive sync and reload the viewer. An already deployed viewer with the updated
+folder ordering picks up the data automatically.
+
+For an explicit Gemini 3.8 Flash attempt after repeated service failures, use the
+[alternate-model configuration](configuration.md#opt-in-gemini-38-flash). The prepared local
+configuration caps attempts at 20 per day and allows one attempt per letter per invocation:
+
+```powershell
+.\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" --config "local/config-gemini-3.8-flash.json" transcribe --pending --env-file .env --output "local/full-exports" --publish-text
+```
+
+Keep that `--config` option when continuing the 3.8 run. Omitting it returns to the usual
+3.5 Flash-Lite default. Completed letters remain skipped in either case.
 
 ## 1. Open PowerShell in the project folder
 

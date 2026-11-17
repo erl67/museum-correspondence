@@ -14,6 +14,13 @@ commas are allowed. Hyphens separate the sender, recipient and date fields, and 
 underscore introduces the final numeric page position. Names containing ambiguous
 separators need a reviewed grouping override; retain full names in catalogue metadata.
 
+An underscore before the date is also accepted, for example `Smith,H-Todd_19040624_01.jpg`
+or `Todd-Smith,D_19040123_01.jpg`. Existing scans need no rename. The exact filename stem
+still defines the group: mixing hyphen and underscore variants within one letter does not
+merge its pages automatically. Readable report stems use the standard hyphen before the date.
+Several correspondents may share a folder; `Smith,D` and `Smith,H` stay distinct hints, while
+the viewer puts their letters together by date and uses registered full names for display.
+
 ## Page positions
 
 - Start each letter at `_01`, even when it has only one scan.

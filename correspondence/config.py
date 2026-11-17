@@ -31,6 +31,11 @@ class Config:
             raise ValueError("Unsupported thinking level")
         if not math.isfinite(self.temperature) or not 0 <= self.temperature <= 2:
             raise ValueError("Temperature must be between 0 and 2")
+        if self.model == "gemini-3.8-flash":
+            if self.thinking_level == "minimal":
+                raise ValueError("gemini-3.8-flash supports low, medium or high thinking")
+            if self.temperature != 1.0:
+                raise ValueError("gemini-3.8-flash does not support a temperature override; leave the default, which is omitted from requests")
         for name in ("max_output_tokens", "max_request_bytes", "max_pages", "attempts", "daily_limit"):
             if type(getattr(self, name)) is not int or getattr(self, name) <= 0:
                 raise ValueError(f"{name} must be a positive integer")
@@ -50,10 +55,15 @@ class Config:
                     raise ValueError("Rates must be nonnegative prices per million tokens")
 
     def generation(self):
-        return dict(temperature=self.temperature, max_output_tokens=self.max_output_tokens,
+        settings = dict(temperature=self.temperature, max_output_tokens=self.max_output_tokens,
                     thinking_config={"thinking_level": self.thinking_level.upper()},
                     response_mime_type="application/json",
                     automatic_function_calling={"disable": True})
+        if self.model == "gemini-3.8-flash":
+            # This model no longer accepts sampling parameters. Provenance uses this
+            # same effective payload, so it does not claim a submitted temperature.
+            settings.pop("temperature")
+        return settings
 
     def public(self):
         return asdict(self)

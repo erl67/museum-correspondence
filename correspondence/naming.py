@@ -5,7 +5,7 @@ import re
 
 PAGE = re.compile(r"^(.*?)(?:[ ]*\(([A-Za-z]+|\d+)\)|_(\d+))$")
 STEM = re.compile(
-    r"^(?P<sender>[^-]+)-(?P<recipient>[^-]+)-"
+    r"^(?P<sender>[^-]+)-(?P<recipient>[^-]+?)[_-]"
     r"(?P<date>\d{8}|\d{6}|\d{4}(?:-\d{1,2}){0,2}|undated)"
     r"(?:-(?P<letter_suffix>[a-z]+))?$"
 )

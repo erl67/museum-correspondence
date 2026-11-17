@@ -29,6 +29,76 @@ during this resumed work.
 
 ## Responsibilities
 
+### Latest processing activity in the viewer — 2026-11-17
+
+The export derives `processed_at` from journaled attempt ends, including failed or incomplete
+readings. The viewer orders active folders by their latest recorded attempt and opens the first
+folder on the home screen, preserving chronology within folders, search and return links.
+Exports, reviews, inventory and cache selection add no activity. Older exports retain their
+completed-reading fallback. The managed Drive publication workflow refreshes the JSON on
+inventory, transcription and export. An export-only run can populate `processed_at` from prior
+attempts without calling the service. A new Apps Script deployment of Code.gs and Viewer.html
+is needed for the new ordering rule. Further JSON updates sync automatically.
+
+### Explicit alternate model — 2026-11-17
+
+At the user's request after repeated 503 responses, an opt-in Gemini 3.8 Flash configuration
+is prepared in ignored `local/config-gemini-3.8-flash.json`, with a tracked template in
+`docs/config-gemini-3.8-flash.example.json`. It uses the existing global `--config` option,
+high thinking, one attempt per letter, 20 attempts/day and 2 starts/minute. It retains the
+existing quota file and its separate model counters. No quota reset, automatic fallback or
+default-model change was made. The 20-attempt allocation is user-specified; account limits
+were not inspected. Complete readings remain excluded by `--pending` across model changes.
+
+Official model/migration documentation confirms `gemini-3.8-flash`, image inputs and high
+thinking, and calls for removing sampling parameters. For this exact model, generation
+omits temperature; request provenance/fingerprints capture that effective payload. Non-default
+temperature and minimal thinking are rejected locally. Normal 3.5 Flash-Lite behavior stays
+unchanged. Mocked SDK tests check the actual 3.8 request and disabled SDK retries; quota tests
+exercise the twentieth attempt, refused twenty-first and preservation of the Lite counter.
+No live request, source change, export/publication, deployment, commit or push was performed.
+
+### New batches and newest-folder browsing — 2026-11-17
+
+Discovery and the CLI now support repeatable `--folder` on `dry-run`/`inventory` for a targeted
+subfolder refresh beneath the same collection root. Unvisited images retain their recorded
+state; their absence or changes are not checked. Existing overrides and archival IDs remain.
+This avoids rediscovering archive copies under the actual Drive root. It is not a transcription
+filter; `--pending` still selects unfinished active letters across the store. Windows
+`desktop.ini` is excluded as folder metadata; other unsupported files remain visible.
+The filename parser also accepts an underscore before the date, retaining exact grouping
+stems and scan names. Neither change moves or renames source files.
+
+The Smith folder contains 25 JPEG pages in 14 provisional letter groups. Two user-supplied
+person authorities, Daisy Smith (`Smith,D` / `Smith, D`) and Herbert Smith (`Smith,H` /
+`Smith, H`), were appended to `local/full-collection`; the prior journal prefix, inventory
+and all results were preserved. Exact review records are in ignored `local/reviews/` with
+names `smith-daisy-20261117.json` and `smith-herbert-20261117.json`. These are name records,
+not handwriting context or letter approvals. All 21 prior active letters have complete results.
+The Smith inventory and transcription commands are prepared in the Drive guide, not executed.
+
+Exports add `transcribed_at` from the current complete result's `saved_at`, otherwise null.
+Viewer folder priority uses the maximum usable timestamp among active complete letters,
+with alphabetical ties/legacy fallback. The newest folder opens with a small divider below;
+search keeps full-collection priorities and opens matching folders; return links reopen their
+source folder. Letter chronology and separate person labels remain intact. Operational
+timestamps stay out of public responses. Replace Code.gs and Viewer.html, update the existing
+deployment version and regenerate viewer JSON; no new reading of old letters is required.
+
+No service requests, source-scan changes, Drive publication, deployment, commit or push
+were performed. Offline tests and the real batch preflight are recorded in `docs/testing.md`.
+
+User-run follow-up on 2026-11-17: inventory/publication completed and the user reported
+redeploying the viewer. Run `run_7fa2cbef565c4e4682a427edbc59dd48` attempted the first Smith
+letter three times; every saved error was 503 UNAVAILABLE with the provider's high-demand
+message. No response or token usage was returned. The batch stopped with one failed Smith
+letter and 13 unprocessed. The current local viewer JSON has no Smith `transcribed_at`, so
+the existing complete-only ordering places it after the completed folders. This is expected
+until its first successful transcription; no ordering or retry-policy change was made.
+The CLI now prints saved errors and an explicit batch-stop notice. Resume with `--pending`
+later; no fresh flag, inventory rerun or further code deployment is needed for the data update.
+Diagnosis and verification made no new live requests or Drive writes.
+
 ### Manual notes, entities and Percy corrections — 2026-10-27
 
 Letter reviews now support explicit replacement of `notes` and `entities` arrays alongside

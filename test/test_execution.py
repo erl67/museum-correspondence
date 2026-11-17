@@ -1,11 +1,15 @@
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from io import StringIO
 import json
 from pathlib import Path
 from unittest.mock import patch
 import httpx
 from correspondence.execution import Quota, QuotaReached, error_policy, transcribe
+from correspondence.cli import main
+from correspondence.config import Config, load_config
+from correspondence.images import prepare_request
 from correspondence.exports import export_all
 from correspondence.provider import Gemini, api_key
 from correspondence.storage import atomic_json, encoded, lock, read_json
@@ -47,6 +51,29 @@ class ExecutionTests(Workspace):
         ends = [e["data"] for e in self.store.events() if e["kind"] == "attempt_end"]
         self.assertIsNone(ends[0]["usage"]["total"])
         self.assertGreater(sum(self.clock.waits), 29)
+
+    def test_cli_explains_saved_service_failure_and_stopped_batch(self):
+        message = '503 UNAVAILABLE: This model is currently experiencing high demand.'
+        fake = FakeTransport([ServiceError(503, message) for _ in range(3)])
+
+        def execute(*args, **kwargs):
+            return transcribe(*args, **kwargs, quota=self.quota, sleep=self.clock.sleep)
+
+        with patch('correspondence.cli.load_config', return_value=self.config), \
+                patch('correspondence.cli.api_key', return_value='synthetic'), \
+                patch('correspondence.cli.Gemini', return_value=fake), \
+                patch('correspondence.cli.transcribe', side_effect=execute), \
+                patch('sys.stdout', new_callable=StringIO) as output:
+            code = main(['--store', str(self.store.root), 'transcribe', '--pending',
+                         '--output', str(self.root / 'exports')])
+        self.assertEqual(code, 1)
+        self.assertIn('ERROR: ' + message, output.getvalue())
+        self.assertIn('Batch stopped; remaining letters were not attempted.', output.getvalue())
+        self.assertEqual(len(fake.calls), 3)
+        self.assertEqual(self.store.latest('result')['errors'], [message])
+        self.assertTrue(self.store.latest('result')['stop_batch'])
+        self.assertEqual(self.store.latest('run_end')['new_attempts'], 3)
+        self.assertIsNone(self.store.latest('run_end')['usage']['total'])
 
     def test_format_correction_bounded_and_preserves_all_responses(self):
         bad = response(self.doc)
@@ -145,6 +172,81 @@ class ExecutionTests(Workspace):
             with self.assertRaises(ValueError):
                 self.quota.update()
             self.assertEqual(read_json(self.config.quota_file), state)
+
+    def test_flash_38_cap_persists_across_retries_and_keeps_lite_counter(self):
+        self.quota.update()
+        lite_before = deepcopy(read_json(self.config.quota_file)['models']['gemini/' + self.config.model])
+        config = replace(self.config, model='gemini-3.8-flash', attempts=1, daily_limit=20)
+        request = prepare_request(self.inventory, self.letter, config)
+        for _ in range(19):
+            Quota(config, self.clock.time, self.clock.sleep).update()
+        fake = FakeTransport([ServiceError(503)])
+        result, _ = transcribe(self.store, self.letter, request, config, lambda: fake,
+                              quota=Quota(config, self.clock.time, self.clock.sleep), sleep=self.clock.sleep)
+        self.assertEqual(len(fake.calls), 1)
+        self.assertTrue(result['stop_batch'])
+        self.assertEqual(result['execution'], 'failed')
+        blocked = FakeTransport([])
+        result, _ = transcribe(self.store, self.letter, request, config, lambda: blocked,
+                              quota=Quota(config, self.clock.time, self.clock.sleep), sleep=self.clock.sleep)
+        self.assertEqual(result['execution'], 'paused')
+        self.assertEqual(blocked.calls, [])
+        counters = read_json(self.config.quota_file)['models']
+        self.assertEqual(counters['gemini/gemini-3.8-flash']['attempts'], 20)
+        self.assertEqual(counters['gemini/' + self.config.model], lite_before)
+
+    def test_flash_38_config_cli_selects_model_without_repeating_complete_letters(self):
+        example = Path(__file__).resolve().parents[1] / 'docs/config-gemini-3.8-flash.example.json'
+        config = replace(load_config(example), quota_file=self.config.quota_file)
+        self.assertEqual((config.model, config.daily_limit, config.attempts), ('gemini-3.8-flash', 20, 1))
+        path = self.root / 'flash.json'
+        atomic_json(path, config.public())
+        fake = FakeTransport([response(self.doc)])
+
+        def execute(*args, **kwargs):
+            return transcribe(*args, **kwargs, quota=Quota(config, self.clock.time, self.clock.sleep), sleep=self.clock.sleep)
+
+        argv = ['--store', str(self.store.root), '--config', str(path), 'transcribe',
+                '--pending', '--output', str(self.root / 'exports')]
+        with patch('correspondence.cli.api_key', return_value='synthetic'), \
+                patch('correspondence.cli.Gemini', return_value=fake), \
+                patch('correspondence.cli.transcribe', side_effect=execute), \
+                patch('sys.stdout', new_callable=StringIO):
+            self.assertEqual(main(argv), 0)
+            self.assertEqual(main(argv), 0)
+        self.assertEqual(len(fake.calls), 1)
+        result = self.store.latest('result')
+        self.assertEqual(result['provenance']['model'], 'gemini-3.8-flash')
+        self.assertNotIn('temperature', result['provenance']['generation'])
+        self.assertNotEqual(result['fingerprint'], self.request['fingerprint'])
+        self.assertEqual(Config().model, 'gemini-3.5-flash-lite')
+        for change in ({'thinking_level': 'minimal'}, {'temperature': 0.5}):
+            with self.assertRaises(ValueError):
+                replace(config, **change)
+
+    def test_flash_38_sdk_payload_omits_sampling_and_disables_hidden_retries(self):
+        config = replace(self.config, model='gemini-3.8-flash', attempts=1, daily_limit=20)
+        request = prepare_request(self.inventory, self.letter, config)
+        requests = []
+
+        def handler(request):
+            requests.append(request)
+            return httpx.Response(503, json={'error': {'code': 503, 'message': 'synthetic'}})
+
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        gemini = Gemini(config, 'dummy-offline-key', http_client=client)
+        try:
+            with self.assertRaises(Exception):
+                gemini.send(request, request['provenance']['prompt'])
+        finally:
+            gemini.close()
+        self.assertEqual(len(requests), 1)
+        self.assertIn('gemini-3.8-flash', requests[0].url.path)
+        generation = json.loads(requests[0].content)['generationConfig']
+        for parameter in ('temperature', 'topP', 'topK', 'candidateCount'):
+            self.assertNotIn(parameter, generation)
+        self.assertEqual(generation['thinkingConfig']['thinking_level'], 'HIGH')
+        self.assertEqual(generation['responseMimeType'], 'application/json')
 
     def test_quota_write_failure_prevents_transport(self):
         fake = FakeTransport([response(self.doc)])

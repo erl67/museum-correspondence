@@ -83,7 +83,17 @@ def export_all(store, inventory, output, mapping=None):
         raise ValueError("Export directory must be outside the source input root")
     records = current_records(store, inventory)
     images = {i["image_id"]: i for i in inventory["images"]}
-    attempts = {e["data"]["attempt_id"]: e["data"] for e in store.events() if e["kind"] == "attempt_end"}
+    events = store.events()
+    attempts = {e["data"]["attempt_id"]: e["data"] for e in events if e["kind"] == "attempt_end"}
+    processed_at = {}
+    for event in events:
+        if event["kind"] != "attempt_start":
+            continue
+        start = event["data"]
+        ended_at = attempts.get(start["attempt_id"], {}).get("ended_at")
+        if ended_at:
+            lid = start["letter_id"]
+            processed_at[lid] = max(processed_at.get(lid, ""), ended_at)
     relationships = relationship_view(store, records)
     mapping = mapping or {"version": 1, "images": {}}
     if mapping.get("version") != 1 or not isinstance(mapping.get("images"), dict):
@@ -146,6 +156,8 @@ def export_all(store, inventory, output, mapping=None):
                                         evidence_json=json.dumps(entity["evidence"], ensure_ascii=False)))
         bundle.append(dict(letter_id=record["letter_id"], active=record["active"],
                            execution=record["execution"], grouping=record["grouping"],
+                           processed_at=processed_at.get(record["letter_id"]),
+                           transcribed_at=record["result"]["saved_at"] if record["execution"] == "complete" else None,
                            metadata_review=record["metadata_review"], transcription_review=record["transcription_review"],
                            relationship_review=record["relationship_review"], review_reasons=record["review_reasons"],
                            hints=record["hints"], metadata=meta, summary=doc["summary"] if doc else "", pages=doc["pages"] if doc else [],

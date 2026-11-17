@@ -10,6 +10,59 @@ from .helpers import ROOT, Workspace, jpeg
 
 
 class DiscoveryTests(Workspace):
+    def test_targeted_inventory_adds_folder_without_discovering_archives_or_losing_history(self):
+        self.setup_letter(('earlier/A-B-1899_01.jpg',))
+        original = deepcopy(self.inventory)
+        jpeg(self.inputs / 'archive/A-B-1899_01.jpg')
+        jpeg(self.inputs / 'Smith/Smith,D-Todd-19031105_01.jpg')
+        jpeg(self.inputs / 'Smith/Smith,D-Todd-19031105_02.jpg')
+        jpeg(self.inputs / 'Smith/nested/Todd-Smith,D_19040123_01.jpg')
+        (self.inputs / 'Smith/desktop.ini').write_text('[.ShellClassInfo]\n', encoding='utf-8')
+        updated = discover(self.inputs, self.inventory, folders=['Smith', 'Smith/nested', 'Smith'])
+        self.assertEqual(updated['collection_id'], original['collection_id'])
+        self.assertEqual(updated['input_root'], original['input_root'])
+        self.assertEqual(len(updated['images']), 4)
+        self.assertEqual(next(l for l in updated['letters'] if l['letter_id'] == self.letter['letter_id']), self.letter)
+        self.assertEqual(next(i for i in updated['images'] if i['path'].startswith('earlier/')), original['images'][0])
+        self.assertTrue(all(l['grouping'] == 'provisional' for l in updated['letters']))
+        self.assertEqual(self.inventory, original)
+        # A targeted refresh only detects missing paths in the visited folder.
+        (self.inputs / 'earlier/A-B-1899_01.jpg').unlink()
+        (self.inputs / 'Smith/Smith,D-Todd-19031105_02.jpg').unlink()
+        refreshed = discover(self.inputs, updated, folders=['Smith'])
+        rows = {i['path']: i for i in refreshed['images']}
+        self.assertEqual(rows['earlier/A-B-1899_01.jpg']['status'], 'ready')
+        self.assertEqual(rows['Smith/Smith,D-Todd-19031105_02.jpg']['status'], 'missing')
+
+    def test_targeted_discovery_rejects_missing_or_outside_folders(self):
+        for folder in ['.', '..', '../elsewhere', str(self.root), 'missing']:
+            with self.subTest(folder=folder), self.assertRaises(ValueError):
+                discover(self.inputs, folders=[folder])
+
+    def test_cli_targeted_inventory_preserves_saved_root_and_grouping_overrides(self):
+        self.setup_letter(('earlier/A-B-1899_01.jpg',))
+        override = {'version': 1, 'groups': [dict(key='prior', letter_id=self.letter['letter_id'],
+                    paths=['earlier/A-B-1899_01.jpg'], source='Synthetic staff grouping')]}
+        prior = discover(self.inputs, self.inventory, override)
+        prior['letters'][0]['review_reasons'] = ['page membership/order changed; recheck grouping and earlier reviews']
+        self.store.append('inventory', prior)
+        jpeg(self.inputs / 'Smith/Smith,H-Todd_19040624_01.jpg')
+        jpeg(self.inputs / 'archive/A-B-1899_01.jpg')
+        before = self.store.journal.read_bytes()
+        common = ['--store', str(self.store.root)]
+        options = ['--input', str(self.inputs), '--folder', 'Smith']
+        with patch('sys.stdout', new_callable=StringIO):
+            self.assertEqual(main(common + ['dry-run'] + options), 0)
+        self.assertEqual(self.store.journal.read_bytes(), before)
+        with patch('sys.stdout', new_callable=StringIO):
+            self.assertEqual(main(common + ['inventory'] + options + ['--output', str(self.root / 'exports')]), 0)
+        current = self.store.latest('inventory')
+        self.assertEqual(current['overrides'], override)
+        self.assertEqual(current['input_root'], prior['input_root'])
+        self.assertEqual(len(current['images']), 2)
+        self.assertEqual(current['letters'][0], prior['letters'][0])
+        self.assertTrue(self.store.journal.read_bytes().startswith(before))
+
     def test_current_sample_inventory_and_numeric_order(self):
         inventory = discover(ROOT / "test" / "inputs")
         self.assertEqual([len(l["image_ids"]) for l in inventory["letters"]], [2, 4, 2, 4, 2, 7, 3, 1])

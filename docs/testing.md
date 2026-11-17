@@ -9,7 +9,27 @@ node --test apps_script/viewer/test_viewer.cjs
 git diff --check
 ```
 
-Recorded on **2026-10-27**, Windows, Python **3.14.2**, Node **24.22.1**:
+Recorded on **2026-11-17**: **131 Python tests passed, 0 failed, 0 skipped;
+56 viewer tests passed, 0 failed, 0 skipped.** Added coverage for targeted folder inventory,
+unchanged earlier grouping-review flags, missing-page detection within the selected folder,
+invalid folder selection, underscore date separators, saved-result timestamps, newest-folder
+ordering, legacy/tied timestamps, public/restricted search, expansion, divider and navigation.
+The failure-output follow-up exercises three synthetic 503 responses through the CLI,
+checking the displayed saved error, batch-stop notice, durable result and attempt counts.
+Gemini 3.8 opt-in checks cover config selection through the CLI, skipped complete readings,
+effective generation provenance, actual mocked SDK payloads without temperature or hidden
+retries, and the persistent 20-attempt cap without resetting the Flash-Lite counter.
+An initial viewer assertion compared a navigation row with an ID; it was corrected to inspect
+the row's ID. Final suites pass. No live transcription or Drive requests occur in these tests.
+
+A read-only local Drive preflight checked the 14 Smith letters/25 JPEG pages, including
+decoding, hashing, page grouping and whole-letter payload limits. It confirmed that a targeted
+inventory preserves all 44 earlier image records and 23 earlier letter records exactly and
+resolves Daisy Smith, Herbert Smith and W.E. Clyde Todd as separate catalogue names. A full-root
+dry run exposed archive duplicates; the targeted workflow avoids discovering them. These checks
+saved no inventory or exports. Live Apps Script deployment/rendering remains untested.
+
+Earlier verification on **2026-10-27**, Windows, Python **3.14.2**, Node **24.22.1**:
 **122 Python tests passed, 0 failed, 0 skipped; 55 viewer tests passed, 0 failed,
 0 skipped.** Pinned runtime dependencies were installed in this repository's `.venv`:
 google-genai 2.23.0, Pillow 12.3.0, tzdata 2026.3. The SDK emits a Python 3.14

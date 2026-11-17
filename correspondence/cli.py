@@ -30,6 +30,7 @@ def parser():
         sub = commands.add_parser(name, help="Discover scans and save inventory" if name == "inventory"
                                   else "Read-only discovery, integrity, grouping and payload checks")
         sub.add_argument("--input", default="test/inputs")
+        sub.add_argument("--folder", action="append", help="Refresh only this relative subfolder; repeat for several. Preserve other saved inventory.")
         sub.add_argument("--overrides", help="Reviewed grouping/order JSON")
         if name == "dry-run":
             sub.add_argument("--profile")
@@ -101,7 +102,7 @@ def run(args):
         if args.overrides and override is None:
             raise ValueError("Override file not found")
         state = publication_state(store, previous) if previous else {}
-        inventory = discover(args.input, previous, override, state.get("files", {}))
+        inventory = discover(args.input, previous, override, state.get("files", {}), folders=args.folder)
         safe_destinations(inventory, store.root, config.quota_file)
         if args.command == "dry-run":
             profile = load_profile(args.profile)
@@ -192,9 +193,13 @@ def run(args):
                     reused += int(cached)
                     failures += int(result["execution"] != "complete")
                     print(f"{letter['letter_id']}: {result['execution']}" + (" (reused; zero new requests)" if cached else ""))
+                    if result["execution"] != "complete":
+                        for error in result.get("errors", []):
+                            print(f"  ERROR: {error}")
                     # Canonical results were already checkpointed; this may safely fail.
                     refresh_exports(store, inventory, args)
                     if result.get("stop_batch"):
+                        print("Batch stopped; remaining letters were not attempted. Saved results and error details are retained.")
                         break
                 # Also refresh status reports when every selected letter was blocked/skipped.
                 refresh_exports(store, inventory, args)

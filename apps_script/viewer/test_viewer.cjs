@@ -373,6 +373,52 @@ test('folder catalogue includes active letters chronologically without loading s
   assert.equal(context(bundle).sandbox.listFolders('').folders[0].letters.length, 125);
 });
 
+test('latest processing opens a folder with only failed readings, preserving search and navigation', () => {
+  const bundle = catalogueFixture();
+  const a = bundle.letters.find(l => l.letter_id === 'early');
+  const z = bundle.letters.find(l => l.letter_id === 'other');
+  a.transcribed_at = '2026-10-27T12:00:00+00:00';
+  z.execution = 'failed';
+  z.processed_at = '2026-11-17T10:00:00-05:00';
+  bundle.letters.find(l => l.active === false).processed_at = '2030-01-01T00:00:00Z';
+  bundle.letters.find(l => l.execution === 'unprocessed').transcribed_at = '2030-01-01T00:00:00Z';
+  bundle.letters.find(l => l.letter_id === 'late').transcribed_at = 'invalid';
+  for (const publicMode of [false, true]) {
+    const c = context(bundle, { publicMode });
+    const result = c.sandbox.listFolders('');
+    assert.deepEqual(Array.from(result.folders, f => f.name), ['Z', 'A & B']);
+    assert.equal(result.folders[0].letters[0].execution, 'failed');
+    assert.equal(result.folders[0].is_latest, true);
+    assert.equal(result.folders[1].is_latest, false);
+    assert.deepEqual(Array.from(result.folders[1].letters, l => l.letter_id), ['hint', 'early', 'late', 'ambiguous', 'unknown']);
+    assert.equal(c.sandbox.listFolders('A & B').folders[0].is_latest, false);
+    assert.equal(c.sandbox.listFolders('café').folders[0].name, 'Z');
+    assert.equal(c.sandbox.loadLetter('early').navigation.next.letter_id, 'late');
+    if (publicMode) {
+      assert.equal(result.folders[0].letters[0].processed_at, undefined);
+      assert.equal(c.sandbox.loadLetter('other').letter.processed_at, undefined);
+    }
+    assert.equal(c.counts().imageReads, 0);
+    const home = frontend(); home.catalogueCalls[0].success(result);
+    assert.deepEqual(home.ids.results.children.map(n => n.tag), ['details', 'hr', 'details']);
+    assert.equal(home.ids.results.children[0].open, true);
+    assert.equal(home.ids.results.children[2].open, false);
+    const returned = frontend({ folder: 'A & B' }); returned.catalogueCalls[0].success(result);
+    assert.equal(returned.ids.results.children[2].open, true);
+    assert.equal(returned.ids.results.children[0].open, false);
+    home.sandbox.renderFolders(result, true);
+    assert.ok(home.ids.results.children.every(n => n.tag === 'details' && n.open));
+    home.sandbox.renderFolders({ total: 1, folders: [result.folders[0]] }, false);
+    assert.equal(home.ids.results.children.length, 1);
+  }
+  // Equal instants use alphabetical order, even with different UTC offsets.
+  a.transcribed_at = '2026-11-17T15:00:00Z';
+  assert.equal(context(bundle).sandbox.listFolders('').folders[0].name, 'A & B');
+  delete z.processed_at;
+  z.transcribed_at = '2030-01-01T00:00:00Z';
+  assert.equal(context(bundle).sandbox.listFolders('').folders[0].name, 'A & B');
+});
+
 test('folder search covers folders and saved text with no truncation, and root is explicit', () => {
   const c = context(catalogueFixture());
   assert.equal(c.sandbox.listFolders('a & b').total, 5);
