@@ -133,10 +133,36 @@ function publicConnections_(value, id) {
   };
 }
 
+function initialCatalogue_(e) {
+  const parameters = (e && e.parameter) || {};
+  const arrival = { query: '', openFolders: [] };
+  if (typeof parameters.q === 'string') {
+    arrival.query = parameters.q.trim().slice(0, 200);
+    return arrival;
+  }
+  if (parameters.letter !== undefined || parameters.folder !== undefined) return arrival;
+  // Some clients forward the bare query with an empty '='.
+  const bare = /^([^&=]+)=?$/.exec((e && e.queryString) || '');
+  if (!bare) return arrival;
+  let term;
+  try {
+    term = decodeURIComponent(bare[1].replace(/\+/g, ' ')).trim();
+  } catch (error) {
+    return arrival;
+  }
+  if (term === 'Smith') arrival.openFolders = ['Smith, Daisy-and-Herbert'];
+  else if (term === 'Shufeldt') arrival.openFolders = ['Shufeldt, Percy', 'Shufeldt, RW'];
+  else arrival.query = term.slice(0, 200);
+  return arrival;
+}
+
 function doGet(e) {
   const page = HtmlService.createTemplateFromFile('Viewer');
   page.letterId = String((e && e.parameter && e.parameter.letter) || '').slice(0, 100);
   page.folder = String((e && e.parameter && e.parameter.folder) || '').slice(0, 2000);
+  const arrival = initialCatalogue_(e);
+  page.query = arrival.query;
+  page.openFolders = JSON.stringify(arrival.openFolders);
   page.appUrl = ScriptApp.getService().getUrl();
   page.error = '';
   try { gate_(); } catch (error) { page.error = error.message; }

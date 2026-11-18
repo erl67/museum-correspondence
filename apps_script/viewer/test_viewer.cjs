@@ -83,6 +83,79 @@ function context(bundle = fixture(), options = {}) {
   return { sandbox, lookups, cache, counts: () => ({ gateReads, imageReads, folderReads, exportReads, lockReleases }) };
 }
 
+function frontendForEvent(c, event) {
+  const template = { evaluate: () => ({ setTitle() { return this; }, addMetaTag() { return this; } }) };
+  c.sandbox.HtmlService = { createTemplateFromFile: () => template };
+  c.sandbox.ScriptApp = { getService: () => ({ getUrl: () => 'https://script.google.com/synthetic/exec' }) };
+  c.sandbox.doGet(event);
+  return frontend({ letter: template.letterId, folder: template.folder, query: template.query,
+    openFolders: template.openFolders });
+}
+
+test('bare person shortcuts open exact folders in the complete catalogue with an empty search', () => {
+  const bundle = fixture(), sample = bundle.letters[0];
+  const smith = 'Smith, Daisy-and-Herbert', percy = 'Shufeldt, Percy', robert = 'Shufeldt, RW';
+  const unrelated = 'Shufeldt, research files';
+  bundle.letters = [smith, percy, robert, unrelated].map((folder, i) => ({ ...sample,
+    letter_id: 'letter_' + i, hints: { folder },
+    processed_at: folder === unrelated ? '2026-11-17T12:00:00Z' : undefined }));
+  const c = context(bundle, { publicMode: true });
+  const folderStates = f => f.ids.results.children.filter(node => node.tag === 'details')
+    .map(node => [node.children[0].textContent, node.open]);
+  function arrive(queryString, parameter) {
+    const f = frontendForEvent(c, { queryString, parameter });
+    const call = f.catalogueCalls[0];
+    call.success(c.sandbox.listFolders(call.query));
+    return f;
+  }
+  for (const [alias, targets] of [['Smith', [smith]], ['Shufeldt', [percy, robert]]]) {
+    for (const [queryString, parameter] of [[alias, {}], [alias + '=', { [alias]: '' }]]) {
+      const f = arrive(queryString, parameter);
+      assert.equal(f.ids.query.value, '');
+      assert.equal(f.catalogueCalls[0].query, '');
+      assert.equal(f.catalogueCalls.length, 1);
+      assert.deepEqual(folderStates(f), [unrelated, percy, robert, smith].map(name => [name, targets.includes(name)]));
+    }
+  }
+  const search = arrive('q=Shufeldt', { q: 'Shufeldt' });
+  assert.equal(search.ids.query.value, 'Shufeldt');
+  assert.deepEqual(folderStates(search), [[unrelated, true], [percy, true], [robert, true]]);
+  const empty = arrive('q=', { q: '' });
+  assert.deepEqual(folderStates(empty), [[unrelated, true], [percy, false], [robert, false], [smith, false]]);
+  const folderLink = arrive('folder=Shufeldt%2C%20RW', { folder: robert });
+  assert.deepEqual(folderStates(folderLink), [[unrelated, false], [percy, false], [robert, true], [smith, false]]);
+  const direct = frontendForEvent(c, { queryString: 'letter=letter_2', parameter: { letter: 'letter_2' } });
+  assert.equal(direct.letterCalls[0].id, 'letter_2');
+  assert.equal(direct.catalogueCalls.length, 0);
+});
+
+test('URL searches load the filtered catalogue with every matching folder open', () => {
+  const c = context(catalogueFixture(), { publicMode: true });
+  for (const event of [
+    { queryString: 'caf%C3%A9', parameter: {} },
+    { queryString: 'caf%C3%A9=', parameter: { 'café': '' } },
+    { queryString: 'q=caf%C3%A9', parameter: { q: 'café' } }
+  ]) {
+    const f = frontendForEvent(c, event);
+    assert.equal(f.ids.query.value, 'café');
+    assert.equal(f.catalogueCalls[0].query, 'café');
+    f.catalogueCalls[0].success(c.sandbox.listFolders(f.catalogueCalls[0].query));
+    assert.equal(f.ids.results.children.length, 2);
+    assert.ok(f.ids.results.children.every(node => node.tag === 'details' && node.open));
+  }
+  for (const [queryString, parameter] of [
+    [null, {}], ['folder=Z', { folder: 'Z' }], ['letter=other', { letter: 'other' }],
+    ['source=home', { source: 'home' }], ['%FF', {}], ['Smith&x=y', { x: 'y' }]
+  ]) {
+    assert.equal(c.sandbox.initialCatalogue_({ queryString, parameter }).query, '');
+  }
+  assert.equal(c.sandbox.initialCatalogue_({ queryString: 'Daisy+Smith' }).query, 'Daisy Smith');
+  assert.equal(c.sandbox.initialCatalogue_({ parameter: { q: 'x'.repeat(250) } }).query.length, 200);
+  const direct = frontend({ letter: 'other', query: 'Smith' });
+  assert.equal(direct.letterCalls[0].id, 'other');
+  assert.equal(direct.catalogueCalls.length, 0);
+});
+
 test('search sender recipient date and saved text without image reads', () => {
   const c = context();
   for (const query of ['A <script>', 'B', '1899-05', 'café']) {
@@ -558,7 +631,8 @@ test('home opens the first folder by default; search and return links override t
   assert.ok(f.ids.results.children.every(n => n.tag === 'details'));
   assert.equal(f.ids.results.children[0].open, true); assert.equal(f.ids.results.children[1].open, false);
   const text = allNodes(f.ids.results).map(n => n.textContent).join('\n');
-  assert.match(text, /Hint sender/); assert.match(text, /Filename hint · unverified/); assert.doesNotMatch(text, /Retired record/);
+  assert.match(text, /Hint sender/);
+  assert.doesNotMatch(text, /Filename hint · unverified|Not placed in chronology|Retired record/);
   const returned = frontend({ folder: 'Z' }); returned.catalogueCalls[0].success(result);
   assert.equal(returned.ids.results.children[0].open, false); assert.equal(returned.ids.results.children[1].open, true);
   const missing = frontend({ folder: 'No longer listed' }); missing.catalogueCalls[0].success(result);
@@ -610,12 +684,13 @@ test('normalized names and ISO dates are consistent across catalogue, accessible
   assert.ok(catalogueNodes.some(n => n.textContent === 'Alexandra Bennett'));
   assert.ok(catalogueNodes.some(n => n.textContent === 'Casey Curator'));
   assert.ok(catalogueNodes.some(n => n.textContent === '1899-05-01'));
+  assert.ok(catalogueNodes.some(n => n.textContent === '2 pages · complete'));
   assert.ok(!catalogueNodes.some(n => n.textContent === 'Alex. BENNETT' || n.textContent === 'May 1st, 1899'));
   assert.match(catalogueNodes.find(n => n.tag === 'a').attributes['aria-label'], /Alexandra Bennett to Casey Curator, 1899-05-01/);
   f.sandbox.renderLetter(c.sandbox.loadLetter('ltr_one'));
   const heading = f.ids.record.children.find(n => n.className === 'letter-heading');
   assert.ok(heading.children.some(n => n.tag === 'h2' && n.textContent === 'Alexandra Bennett → Casey Curator'));
-  assert.ok(heading.children.some(n => n.textContent.startsWith('1899-05-01 ·')));
+  assert.ok(heading.children.some(n => n.textContent === '1899-05-01 · 2 pages'));
   const panel = f.ids.record.children.find(n => n.className === 'panel'), panelNodes = allNodes(panel);
   assert.equal(panelNodes.filter(n => n.tag === 'dd' && n.textContent === 'Alexandra Bennett').length, 2);
   assert.ok(panelNodes.some(n => n.tag === 'dd' && n.textContent === '1899-05-01'));
@@ -632,8 +707,10 @@ test('normalized names and ISO dates are consistent across catalogue, accessible
   assert.equal(c.sandbox.searchLetters('Alexandra Bennett').total, 1);
 });
 
-test('catalogue authority names are searchable and preserve inferred and filename labels', () => {
+test('authority names are searchable and their certainty and filename labels appear in letter details', () => {
   const bundle = fixture(), letter = bundle.letters[0];
+  letter.scans = letter.scans.slice(0, 1);
+  letter.pages = letter.pages.slice(0, 1);
   letter.metadata.sender = { value: 'A.', normalized: 'A.', certainty: 'inferred' };
   letter.metadata.recipient = { value: null, normalized: null, certainty: 'unknown' };
   letter.hints = { recipient: 'B' };
@@ -646,11 +723,16 @@ test('catalogue authority names are searchable and preserve inferred and filenam
   assert.equal(c.sandbox.searchLetters('A.').total, 1);
   f.catalogueCalls[0].success(c.sandbox.listFolders(''));
   const text = allNodes(f.ids.results).map(n => n.textContent).join('\n');
-  assert.match(text, /Alice Example/); assert.match(text, /inferred/);
-  assert.match(text, /Bob Example/); assert.match(text, /Filename hint · unverified/);
+  assert.match(text, /Alice Example/); assert.match(text, /Bob Example/);
+  assert.match(text, /1 page · complete/);
+  assert.doesNotMatch(text, /inferred|Filename hint · unverified/i);
   f.sandbox.renderLetter(c.sandbox.loadLetter('ltr_one'));
+  const heading = f.ids.record.children.find(n => n.className === 'letter-heading');
+  assert.ok(heading.children.some(n => n.textContent === '1899-05-01 · 1 page'));
   const panel = f.ids.record.children.find(n => n.className === 'panel');
-  assert.match(allNodes(panel).map(n => n.textContent).join('\n'), /Filename hint · unverified/);
+  const details = allNodes(panel).map(n => n.textContent).join('\n');
+  assert.match(details, /Filename hint · unverified/);
+  assert.match(details, /Certainty: inferred/);
   const evidence = f.ids.record.children.find(n => n.className === 'provenance');
   assert.equal(JSON.parse(evidence.children.find(n => n.tag === 'pre').textContent).metadata.sender.value, 'A.');
 });
@@ -663,7 +745,9 @@ test('reviewed catalogue date sorts a short year without loosening automatic chr
   assert.deepEqual(Array.from(rows, l => l.letter_id), ['hint', 'early', 'ambiguous', 'late', 'unknown']);
   assert.equal(rows[2].sort_basis, 'catalogue confirmation');
   f.catalogueCalls[0].success(c.sandbox.listFolders(''));
-  assert.match(allNodes(f.ids.results).map(n => n.textContent).join('\n'), /Catalogue date confirmed/);
+  assert.doesNotMatch(allNodes(f.ids.results).map(n => n.textContent).join('\n'), /Catalogue date confirmed/);
+  f.sandbox.renderLetter(c.sandbox.loadLetter('ambiguous'));
+  assert.match(allNodes(f.ids.record).map(n => n.textContent).join('\n'), /Catalogue date confirmed: 1899-05-01/);
   for (const confirmed of [null, { ...letter.catalogue_date, value: '1999-05-01' },
     { ...letter.catalogue_date, precision: 'year' }, { ...letter.catalogue_date, review_event: null }]) {
     assert.equal(c.sandbox.chronology_({ ...letter, catalogue_date: confirmed }).sort_basis, 'unknown');

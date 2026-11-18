@@ -241,6 +241,10 @@ Open the viewer at **[cmbirds.org/letters](https://cmbirds.org/letters)**. Use t
 address in bookmarks and shared links. Apps Script deployment and script-editor URLs are
 for maintenance; see the [viewer setup guide](apps_script/viewer/README.md).
 
+Use `?Smith` or `?Shufeldt` to open the corresponding folders in the full catalogue.
+Use `?q=Smith` for a filtered search. See the
+[viewer link guide](apps_script/viewer/README.md#links-to-searches-folders-and-letters).
+
 The [Apps Script viewer](apps_script/viewer/README.md) starts with expandable letter folders,
 ordered by the latest recorded transcription attempt in each folder, including failed and incomplete readings. The newest opens automatically,
 with a small divider before the others. Each lists dates, senders and recipients in chronological order, with an inset summary

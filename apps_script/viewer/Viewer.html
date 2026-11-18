@@ -41,7 +41,6 @@
     .folder > summary::marker { color: #37675b; }
     .folder-divider { border: 0; border-top: 1px solid #d8ddd3; margin: 22px 12px; }
     .folder-count { font-size: .85rem; color: #61726a; margin-left: 14px; }
-    .folder-help { margin: 0; padding: 0 24px 16px; font-size: .85rem; line-height: 1.5; color: #61726a; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; text-align: left; }
     th, td { padding: 15px 24px; border-top: 1px solid #e4e7df; vertical-align: top; overflow-wrap: anywhere; }
@@ -99,7 +98,8 @@
     }
   </style>
 </head>
-<body data-letter="<?= letterId ?>" data-folder="<?= folder ?>" data-url="<?= appUrl ?>">
+<body data-letter="<?= letterId ?>" data-folder="<?= folder ?>" data-query="<?= query ?>"
+  data-open-folders="<?= openFolders ?>" data-url="<?= appUrl ?>">
   <header class="site-header">
     <h1><a href="<?= appUrl ?>">Museum correspondence</a></h1>
     <p class="muted">Letters from the collection</p>
@@ -152,44 +152,38 @@
       return (prefersNormalized(name) ? normalized || field.value : field.value || normalized) || 'Unknown';
     }
     function folderLabel(name) { return name === '.' ? 'Collection root' : name; }
+    function pageCountLabel(count) { return count + (count === 1 ? ' page' : ' pages'); }
     function displayValue(letter, name) {
       if (name === 'date' && letter.sort_basis === 'filename hint') return letter.sort_date;
       const label = (letter.catalogue_names || {})[name];
       return label ? label.name : value(letter.metadata, name);
     }
-    function displayField(parent, letter, name) {
+    function catalogueValue(letter, name) {
       const field = (letter.metadata || {})[name] || {};
-      if (name === 'date' && letter.sort_basis === 'filename hint') {
-        element('span', displayValue(letter, name), parent);
-        element('span', 'Filename hint · unverified', parent, 'field-note');
-        return;
+      if (field.value || field.normalized || (name === 'date' && letter.sort_basis === 'filename hint')) {
+        return displayValue(letter, name);
       }
-      if (field.value || field.normalized) {
-        element('span', displayValue(letter, name), parent);
-        if (field.certainty && field.certainty !== 'explicit') element('span', field.certainty, parent, 'field-note');
-      } else if (letter.hints && letter.hints[name]) {
-        element('span', ((letter.catalogue_names || {})[name] || {}).name || letter.hints[name], parent);
-        element('span', 'Filename hint · unverified', parent, 'field-note');
-      } else element('span', name === 'date' ? 'Undated' : 'Unknown', parent);
-      if (name === 'date' && letter.sort_basis === 'unknown') element('span', 'Not placed in chronology', parent, 'field-note');
-      if (name === 'date' && letter.catalogue_date) element('span', 'Catalogue date confirmed', parent, 'field-note');
+      const hint = (letter.hints || {})[name];
+      if (hint) return ((letter.catalogue_names || {})[name] || {}).name || hint;
+      return name === 'date' ? 'Undated' : 'Unknown';
     }
     function defaultFolderExpanded(folder, index) {
       // The server puts the folder with the latest transcription activity first.
       return index === 0;
     }
-    function renderFolders(result, searching) {
+    function renderFolders(result, searching, openFolders = []) {
       const root = document.getElementById('results'); root.replaceChildren();
       document.getElementById('message').textContent = result.total + ' letter(s) in ' + result.folders.length + ' folder(s)';
       if (!result.folders.length) element('p', searching ? 'No letters match this search.' : 'No letters are available in this export.', root);
       const requestedFolder = result.folders.find(folder => folder.name === document.body.dataset.folder);
       for (const [index, folder] of result.folders.entries()) {
         const details = element('details', null, root, 'folder');
-        details.open = Boolean(searching || (requestedFolder
-          ? folder.name === requestedFolder.name : defaultFolderExpanded(folder, index)));
+        if (searching) details.open = true;
+        else if (openFolders.length) details.open = openFolders.includes(folder.name);
+        else if (requestedFolder) details.open = folder.name === requestedFolder.name;
+        else details.open = defaultFolderExpanded(folder, index);
         const heading = element('summary', folderLabel(folder.name), details);
         element('span', folder.letters.length + ' letter(s)', heading, 'folder-count');
-        element('p', 'Oldest first. Partial dates keep their recorded precision. A valid filename date supplies placement when the document date cannot be used, and is marked as a hint. Letters without either usable date follow dated letters.', details, 'folder-help');
         const wrap = element('div', null, details, 'table-wrap');
         const table = element('table', null, wrap);
         table.setAttribute('aria-label', 'Letters in ' + folderLabel(folder.name));
@@ -198,12 +192,12 @@
         const body = element('tbody', null, table);
         for (const letter of folder.letters) {
           const row = element('tr', null, body);
-          for (const name of ['date', 'sender', 'recipient']) displayField(element('td', null, row), letter, name);
+          for (const name of ['date', 'sender', 'recipient']) element('td', catalogueValue(letter, name), row);
           const reading = element('td', null, row);
           const a = linkTo(letter.letter_id, 'Read letter →', reading);
-          a.setAttribute('aria-label', 'Read letter: ' + displayValue(letter, 'sender') + ' to ' +
-            displayValue(letter, 'recipient') + ', ' + displayValue(letter, 'date') + ', ' + letter.letter_id);
-          element('span', letter.page_count + ' page(s) · ' + letter.execution, reading, 'field-note');
+          a.setAttribute('aria-label', 'Read letter: ' + catalogueValue(letter, 'sender') + ' to ' +
+            catalogueValue(letter, 'recipient') + ', ' + catalogueValue(letter, 'date') + ', ' + letter.letter_id);
+          element('span', pageCountLabel(letter.page_count) + ' · ' + letter.execution, reading, 'field-note');
           if (letter.active === false) element('span', 'Retired record', reading, 'field-note');
           if (letter.summary_snippet) {
             const summaryRow = element('tr', null, body, 'catalogue-summary-row');
@@ -218,12 +212,12 @@
       }
     }
     let catalogueRequest = 0;
-    function loadFolders(query) {
+    function loadFolders(query, openFolders = []) {
       const request = ++catalogueRequest;
       document.getElementById('catalogue').hidden = false;
       document.getElementById('message').textContent = 'Loading letter folders…';
       google.script.run.withSuccessHandler(result => {
-        if (request === catalogueRequest) renderFolders(result, Boolean(query.trim()));
+        if (request === catalogueRequest) renderFolders(result, Boolean(query.trim()), openFolders);
       }).withFailureHandler(error => {
         if (request === catalogueRequest) document.getElementById('message').textContent = error.message;
       }).listFolders(query);
@@ -361,7 +355,7 @@
       const heading = element('header', null, root, 'letter-heading');
       if (result.navigation) element('p', folderLabel(result.navigation.folder), heading, 'eyebrow');
       element('h2', displayValue(letter, 'sender') + ' → ' + displayValue(letter, 'recipient'), heading);
-      element('p', displayValue(letter, 'date') + ' · ' + letter.scans.length + ' page(s)', heading, 'muted');
+      element('p', displayValue(letter, 'date') + ' · ' + pageCountLabel(letter.scans.length), heading, 'muted');
       if (letter.sort_basis === 'filename hint') element('p', 'Filename hint · unverified', heading, 'field-note');
       const summary = element('section', null, root, 'letter-summary');
       element('p', letter.summary || 'No summary is available for this letter yet.', summary);
@@ -412,7 +406,11 @@
     });
     if (!document.getElementById('initial-error').textContent.trim()) {
       if (document.body.dataset.letter) openLetter(document.body.dataset.letter);
-      else loadFolders('');
+      else {
+        const query = document.getElementById('query');
+        query.value = document.body.dataset.query || '';
+        loadFolders(query.value, JSON.parse(document.body.dataset.openFolders || '[]'));
+      }
     }
   </script>
 </body>

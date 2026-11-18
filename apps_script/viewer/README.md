@@ -77,6 +77,28 @@ not updated by routine commands. Use the current local or synced file for mainte
 With explicit per-image mappings, supply `--mapping` on a final export; inventory/transcription
 refreshes do not retain those mappings. The configured scan-root lookup needs no mapping file.
 
+## Links to searches, folders, and letters
+
+Add these query strings to the viewer URL or to a website redirect that forwards the query:
+
+| Query string | Opens |
+| --- | --- |
+| `?Smith` or `?Smith=` | Opens `Smith, Daisy-and-Herbert` in the full catalogue. |
+| `?Shufeldt` or `?Shufeldt=` | Opens `Shufeldt, Percy` and `Shufeldt, RW` in the full catalogue. |
+| `?q=Smith` | Runs the catalogue search and opens all matching folders. Matches can come from folder names, correspondents, dates, filenames, or saved text. |
+| `?folder=Smith%2C%20Daisy-and-Herbert` | Opens the named folder in the full catalogue. The folder name must match exactly. |
+| `?letter=ltr_…` | Opens the letter with that archival ID. Copy the full ID from a viewer letter link. |
+
+The two person shortcuts keep the search box empty and leave every other folder visible and
+collapsed. Other bare terms still run a search. Use `q=` for explicit searches, such as
+`?q=Daisy%20Smith`. An empty `?q=` opens the regular catalogue. A letter link takes precedence
+when combined with a search. On the catalogue, a nonempty search opens all matching folders.
+
+The website's Apache redirect can forward these as-is. A `RewriteRule` whose destination
+is the existing Apps Script `/exec` URL, with no query string and without `QSD`, preserves
+the incoming query by default. Both `Code.gs` and `Viewer.html` need a new deployment version
+to enable these links. The current Drive export already has the searchable fields and folder names.
+
 ## Folder order and shared correspondents
 
 Folders sort by their latest finished transcription attempt, newest first, even when the
@@ -205,14 +227,15 @@ and deploy a new version. Existing JSON exports already contain summaries and ne
 Folder tables, accessible letter-link labels, letter headings and the details panel prefer
 staff catalogue names, then the saved normalized sender, recipient, attributed author and date. Dates use the export's
 ISO form (`YYYY-MM-DD`, `YYYY-MM` or `YYYY`) without adding precision. If a normalized value
-is missing or blank, the original reading is displayed. Existing uncertainty and filename-hint
-labels remain visible. Original spellings/date wording and evidence remain available under
+is missing or blank, the original reading is displayed. The catalogue shows the values,
+page count and transcription status. The letter page shows uncertainty and filename hints.
+Original spellings/date wording and evidence remain available under
 **Metadata evidence** (plus technical provenance in restricted mode); the source transcription is displayed verbatim.
 Other metadata retains its original reading with a separate normalized value where available.
 Standard catalogue names come from explicitly enabled authority aliases in the local store.
 They change presentation/search only: no person IDs are assigned to readings and no attribution
-or transcription is approved. Conflicting aliases remain unresolved. Filename-based names retain
-**Filename hint · unverified**, and inferred readings remain labelled. Original metadata and
+or transcription is approved. Conflicting aliases remain unresolved. The letter details flag
+filename-based names and inferred readings. Original metadata and
 the catalogue label's name/basis remain in the evidence panel; internal authority sources are
 restricted to staff mode. See [review.md](../../docs/review.md#standard-catalogue-names).
 
@@ -221,7 +244,7 @@ Partial dates retain year/month precision and sort before more specific dates wi
 prefix; equal dates use the stable archival ID as a deterministic tie-breaker. This display
 order does not establish the sequence of overlapping partial dates. When the document date
 cannot be used (including an abbreviated year, uncertain date, invalid normalization or missing
-date), a valid filename date positions the letter and is labelled **Filename hint · unverified**.
+date), a valid filename date positions the letter. The letter page labels it **Filename hint · unverified**.
 The displayed catalogue date matches the date used to sort it; the document's original reading
 and evidence remain available in the details. Supported document dates and applicable staff
 confirmations take priority. Only records without either usable date follow dated records.
@@ -229,7 +252,7 @@ Folder membership comes from the export,
 not live Drive folder discovery; empty folders without letters are not in that export.
 
 A separate, revision-bound staff catalogue-date confirmation can place an abbreviated date
-such as `Aug 7 - '99` at `1899-08-07`. The viewer labels it **Catalogue date confirmed**.
+such as `Aug 7 - '99` at `1899-08-07`. The letter details label it **Catalogue date confirmed**.
 This does not rewrite the source date or relax automatic relationship chronology. A later
 date/text correction or new service revision invalidates that confirmation. A valid filename
 date still supplies fallback placement afterward, without needing a new staff confirmation.

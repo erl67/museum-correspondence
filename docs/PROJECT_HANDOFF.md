@@ -29,6 +29,17 @@ during this resumed work.
 
 ## Responsibilities
 
+### Viewer folder shortcuts and search links — 2026-11-17
+
+`doGet` reads `e.queryString` to recognize `?Smith` and `?Shufeldt`, including trailing `=`.
+On arrival the full catalogue opens only `Smith, Daisy-and-Herbert` or both `Shufeldt, Percy`
+and `Shufeldt, RW`. The other folders stay visible and collapsed, with an empty search box.
+Explicit `?q=` links and other bare search terms still use the existing search. Exact
+`?folder=` links reopen one folder and `?letter=` links open one record. The website forwards
+the query string to the existing Apps Script deployment. Update Code.gs and Viewer.html
+together. The current export already contains the exact folder names. Offline verification
+passed all 58 viewer and 131 Python tests, with no failures or skips.
+
 ### Latest processing activity in the viewer — 2026-11-17
 
 The export derives `processed_at` from journaled attempt ends, including failed or incomplete
