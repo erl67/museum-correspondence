@@ -64,7 +64,10 @@ def reading(record, images):
             lines += [f"OPTIONAL TRANSLATION ({translation['language']}; {images.get(translation['image_id'], {}).get('path', translation['image_id'])})",
                       translation["text"], ""]
         lines += ["CATALOGUE DETAILS (separate from the letter)"]
-        for field in ("sender", "recipient", "date", "place_written"):
+        fields = ["sender", "recipient", "date", "place_written"]
+        if doc["metadata"].get("attributed_author", {}).get("person_id"):
+            fields.append("attributed_author")
+        for field in fields:
             detail = doc["metadata"].get(field, {})
             label = record.get("catalogue_names", {}).get(field, {})
             shown = label.get("name") or (detail.get("normalized") if field != "place_written" else None) or detail.get("value") or 'Unknown'

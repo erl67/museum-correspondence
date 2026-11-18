@@ -83,14 +83,40 @@ function context(bundle = fixture(), options = {}) {
   return { sandbox, lookups, cache, counts: () => ({ gateReads, imageReads, folderReads, exportReads, lockReleases }) };
 }
 
-function frontendForEvent(c, event) {
-  const template = { evaluate: () => ({ setTitle() { return this; }, addMetaTag() { return this; } }) };
+function evaluateViewerRequest(c, event) {
+  const template = { evaluate: () => ({ setTitle(title) { template.title = title; return this; }, addMetaTag() { return this; } }) };
   c.sandbox.HtmlService = { createTemplateFromFile: () => template };
   c.sandbox.ScriptApp = { getService: () => ({ getUrl: () => 'https://script.google.com/synthetic/exec' }) };
   c.sandbox.doGet(event);
-  return frontend({ letter: template.letterId, folder: template.folder, query: template.query,
-    openFolders: template.openFolders });
+  return template;
 }
+
+function frontendForEvent(c, event) {
+  const template = evaluateViewerRequest(c, event);
+  return frontend({ letter: template.letterId, folder: template.folder, query: template.query,
+    openFolders: template.openFolders }, template.error);
+}
+
+test('page title identifies the requested letter using catalogue names and its displayed date', () => {
+  const bundle = fixture(), letter = bundle.letters[0];
+  letter.catalogue_names = { sender: { name: 'Herbert Smith' } };
+  letter.metadata.recipient.normalized = 'W.E. Clyde Todd';
+  letter.metadata.date = { value: '6 Feb 19', normalized: '1919-02-06', certainty: 'uncertain', precision: 'day' };
+  letter.hints = { date: '1919-02-06' };
+  const c = context(bundle, { publicMode: true });
+  const home = evaluateViewerRequest(c, {});
+  assert.equal(home.title, 'Museum correspondence transcriptions');
+  assert.equal(c.counts().exportReads, 0);
+  const event = { parameter: { letter: letter.letter_id } };
+  assert.equal(evaluateViewerRequest(c, event).title, 'Transcription — Herbert Smith → W.E. Clyde Todd 1919-02-06');
+  assert.equal(c.counts().exportReads, 1);
+  assert.equal(c.counts().imageReads, 0);
+  const denied = context(bundle, { deny: true });
+  assert.equal(evaluateViewerRequest(denied, event).title, home.title);
+  assert.equal(denied.counts().exportReads, 0);
+  letter.active = false;
+  assert.equal(evaluateViewerRequest(c, event).title, home.title);
+});
 
 test('bare person shortcuts open exact folders in the complete catalogue with an empty search', () => {
   const bundle = fixture(), sample = bundle.letters[0];
@@ -627,6 +653,7 @@ test('home opens the first folder by default; search and return links override t
   const f = frontend(), result = context(catalogueFixture()).sandbox.listFolders('');
   assert.equal(f.catalogueCalls.length, 1); assert.equal(f.calls.length, 0);
   f.catalogueCalls[0].success(result);
+  assert.equal(f.ids.message.textContent, '6 letters in 2 folders');
   assert.equal(f.ids.results.children.length, 2);
   assert.ok(f.ids.results.children.every(n => n.tag === 'details'));
   assert.equal(f.ids.results.children[0].open, true); assert.equal(f.ids.results.children[1].open, false);
@@ -641,6 +668,7 @@ test('home opens the first folder by default; search and return links override t
   assert.ok(f.ids.results.children.every(n => n.open));
   f.sandbox.loadFolders('old'); f.sandbox.loadFolders('new');
   f.catalogueCalls[2].success({ total: 0, folders: [] }); f.catalogueCalls[1].success(result);
+  assert.equal(f.ids.message.textContent, '0 letters in 0 folders');
   assert.match(f.ids.results.children[0].textContent, /No letters match/); // Ignore a slow, older response.
   f.ids['clear-search'].events.click();
   assert.equal(f.ids.query.value, ''); assert.equal(f.catalogueCalls[3].query, '');
@@ -652,24 +680,30 @@ test('home opens the first folder by default; search and return links override t
 test('each scan is left of its own matched transcription; summary is above and metadata below all pages', () => {
   const bundle = fixture(), letter = bundle.letters[0];
   letter.pages.reverse(); // Match IDs, never zip independent arrays.
-  letter.translations = [{ image_id: 'img_A', language: 'French', text: 'Translation A' }];
+  const longTranslation = 'A translation with long lines. '.repeat(80) + 'Final line of the translation.';
+  letter.translations = [{ image_id: 'img_A', language: 'French', text: longTranslation }];
   letter.pages[1].annotations = [{ kind: 'marginal', text: 'Margin B' }];
   letter.metadata.place_written = { value: 'Synthetic place' };
   const f = frontend(); f.sandbox.renderLetter(context(bundle).sandbox.loadLetter('ltr_one'));
   const children = f.ids.record.children, pairs = children.filter(n => n.className === 'page-pair');
+  assert.equal(f.ids.record.dataset.wideTranscription, 'true');
   assert.deepEqual(pairs.map(p => p.dataset.imageId), ['img_B', 'img_A']);
   for (const [i, pair] of pairs.entries()) {
     const columns = pair.children.find(n => n.className === 'page-columns');
     assert.equal(columns.children[0].tag, 'figure');
-    const text = allNodes(columns.children[1]).map(n => n.textContent).join('\n');
+    const panel = columns.children[1].children.find(n => n.className.includes('transcript-sheet'));
+    const text = allNodes(panel).map(n => n.textContent).join('\n');
     assert.match(text, i === 0 ? /0012/ : /\[blank\]/);
-    assert.equal(text.includes('Translation A'), i === 1); assert.equal(text.includes('Margin B'), i === 0);
+    assert.equal(text.includes(longTranslation), i === 1); assert.equal(text.includes('Margin B'), i === 0);
+    assert.ok(allNodes(columns.children[1]).every(n => n.tag !== 'details'));
   }
   assert.ok(children.findIndex(n => n.className === 'letter-summary') < children.indexOf(pairs[0]));
   const metadata = children.find(n => n.className === 'panel');
   assert.ok(children.indexOf(metadata) > children.indexOf(pairs[1]));
   assert.match(allNodes(metadata).map(n => n.textContent).join('\n'), /Synthetic place/);
   assert.equal(f.ids.catalogue.hidden, true);
+  f.sandbox.renderLetter(context().sandbox.loadLetter('ltr_one'));
+  assert.equal(f.ids.record.dataset.wideTranscription, 'false');
 });
 
 test('normalized names and ISO dates are consistent across catalogue, accessible links, heading and details', () => {
@@ -817,6 +851,7 @@ test('both navigation bars link to adjacent letters and reopen the source folder
   assert.equal(navs.length, 2);
   for (const nav of navs) {
     const links = allNodes(nav).filter(n => n.tag === 'a');
+    assert.equal(links[0].textContent, '← All letters');
     assert.match(links[0].href, /\?folder=A%20%26%20B$/);
     assert.match(links[1].href, /\?letter=hint$/); assert.match(links[2].href, /\?letter=late$/);
   }

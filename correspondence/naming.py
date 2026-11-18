@@ -38,10 +38,10 @@ def filename_hints(stem):
 
 
 def canonical_stem(stem):
-    """Format a recognized letter stem, leaving custom report titles intact."""
+    """Compact the date while preserving the scan or title's separator."""
     hints = filename_hints(stem)
     if not hints:
         return stem
     value = hints['date'].replace('-', '') if hints['date'] else 'undated'
-    suffix = '-' + hints['letter_suffix'] if hints.get('letter_suffix') else ''
-    return f"{hints['sender']}-{hints['recipient']}-{value}{suffix}"
+    start, end = STEM.fullmatch(stem).span('date')
+    return stem[:start] + value + stem[end:]

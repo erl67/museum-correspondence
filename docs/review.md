@@ -46,9 +46,9 @@ explicit local map rather than silently matching and merging records by hash:
 ```json
 {
   "version": 1,
-  "source": "Staff authorized compact-date naming; same original image and page position",
+  "source": "Staff authorized an underscore before the date. The scan and page position match.",
   "paths": {
-    "Folder/Shufeldt,P-Todd-1899-08-07(1).jpg": "Folder/Shufeldt,P-Todd-18990807_01.jpg"
+    "Smith, Daisy-and-Herbert/Smith,D-Todd-19031105_01.jpg": "Smith, Daisy-and-Herbert/Smith,D-Todd_19031105_01.jpg"
   }
 }
 ```
@@ -281,7 +281,9 @@ Create a person with:
 ```
 
 The returned review supplies a stable `per_…` ID. Include that `person_id` when correcting
-a sender/recipient/attributed-author field. To update a person, supply the existing ID and
+a sender/recipient/attributed-author field. Attributed author records the person credited
+with writing the letter. A staff-linked author also appears in the readable TXT report.
+To update a person, supply the existing ID and
 the full updated name/alias list. Shared surnames or aliases never automatically merge people;
 two different approved people may legitimately share initials. Alias approval is separate
 from every letter's attribution and transcription review.

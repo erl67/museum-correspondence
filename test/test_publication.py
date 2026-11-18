@@ -39,7 +39,9 @@ class PublicationTests(Workspace):
         before = {p: p.read_bytes() for p in self.inputs.rglob("*.jpg")}
         with patch("correspondence.provider.Gemini.send", side_effect=AssertionError("network forbidden")):
             publish_text(self.store, self.inventory, self.output)
-            publish_text(self.store, self.inventory, self.output)
+            with patch("correspondence.publication.atomic_bytes") as write:
+                publish_text(self.store, self.inventory, self.output)
+                write.assert_not_called()
         for relative in ("Correspondent/A-B-18990502.txt", "Correspondent/Correspondent_transcriptions.txt",
                          "Correspondence_transcriptions.txt", "Correspondence_viewer.json"):
             self.assertTrue((self.inputs / relative).is_file())

@@ -1,6 +1,6 @@
 """Append-only human corrections, separate from service responses."""
 from copy import deepcopy
-from .catalogue import catalogue_names, resolved_name_conflicts
+from .catalogue import NAME_FIELDS, catalogue_names, resolved_name_conflicts
 from .schema import FIELDS, RELATIONS, date_interval, validate_document
 from .storage import identity
 
@@ -15,6 +15,7 @@ def current_records(store, inventory):
     records = []
     for letter in inventory["letters"]:
         result = results.get(letter["letter_id"])
+        reviewed_names = set()
         record = deepcopy(letter)
         record.update(execution="blocked" if letter["grouping"] == "needs_review" else "unprocessed", metadata_review="unreviewed",
                       transcription_review="unreviewed", relationship_review="unreviewed",
@@ -50,8 +51,10 @@ def current_records(store, inventory):
             elif correction.get("metadata") or any(k in correction for k in ("notes", "entities")):
                 record["metadata_review"] = "in_progress"
                 record["relationship_review"] = "in_progress"
-            doc["metadata"].update(deepcopy(correction.get("metadata", {})))
-            if "date" in correction.get("metadata", {}):
+            metadata = correction.get("metadata", {})
+            doc["metadata"].update(deepcopy(metadata))
+            reviewed_names.update(metadata.keys() & NAME_FIELDS)
+            if "date" in metadata:
                 record["catalogue_date"] = None
             confirmed = correction.get("catalogue_date")
             if confirmed and confirmed.get("date_basis") == doc["metadata"]["date"]:
@@ -68,13 +71,14 @@ def current_records(store, inventory):
         if record["stale_reviews"]:
             record["review_reasons"].append("Earlier human corrections need rebasing; preserved in review history")
         if record["document"]:
-            # Filename hints can change after an explicit path reconciliation. Keep
-            # historical validation in the saved result; display current conflicts.
+            # Name reviews and path reconciliation can change current catalogue
+            # warnings. Historical validation remains in the saved result.
             prefix = "filename/document conflict: "
+            rechecked = (prefix, *(name + ": " for name in sorted(reviewed_names)))
             _, reasons = validate_document(record["document"], record["image_ids"], record["hints"])
             resolved = resolved_name_conflicts(record["document"]["metadata"], record["hints"], registered)
-            record["review_reasons"] = [r for r in record["review_reasons"] if not r.startswith(prefix)]
-            record["review_reasons"] += [r for r in reasons if r.startswith(prefix)
+            record["review_reasons"] = [r for r in record["review_reasons"] if not r.startswith(rechecked)]
+            record["review_reasons"] += [r for r in reasons if r.startswith(rechecked)
                                          and not any(r.startswith(prefix + name + ":") for name in resolved)]
         record["catalogue_names"] = catalogue_names(
             record["document"]["metadata"] if record["document"] else {}, record["hints"], registered)

@@ -62,9 +62,9 @@ relocation is not currently supported. Preserve the store rather than rebuilding
 
 ### Source and grouping changes
 
-Current scan names follow `Sender-Recipient-YYYYMMDD_01.jpg`; see [naming.md](naming.md).
-Discovery also accepts legacy dashed dates and parenthesized labels. Page positions sort
-numerically. Optional `-a`/`-b` letter suffixes remain part of the exact group stem and
+Name new scans `Sender-Recipient_YYYYMMDD_01.jpg`. See [naming.md](naming.md).
+Discovery also accepts a hyphen before the date, legacy dashed dates and parenthesized labels.
+Page positions sort numerically. Optional `-a`/`-b` letter suffixes remain part of the exact group stem and
 appear as `letter_suffix` hints. Compact date hints are normalized to dashed dates at the
 same precision; `undated` gives a null date hint. Invalid calendar dates require review.
 

@@ -116,6 +116,7 @@ The store records ownership hashes for published files. An unrelated or edited f
 managed destination blocks replacement, so preserve it separately and resolve the collision
 before retrying. Superseded owned Drive reports are archived into the store before removal.
 Only exact managed paths are excluded from later scan discovery.
+Copies that already match the regenerated content keep their existing Drive files.
 
 Results are durable before export begins. Local exports are written before publication, so
 Drive being unavailable or an output collision does not lose the saved reading. Restore the

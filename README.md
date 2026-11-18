@@ -30,16 +30,16 @@ fixtures, not verified reference transcriptions, and do not establish confirmed 
 
 ## Scan filenames
 
-Use `Sender-Recipient-YYYYMMDD_01.jpg`, for example
-`Shufeldt,P-Todd-18990807_01.jpg`. Number every scan, including single-page letters,
+Use `Sender-Recipient_YYYYMMDD_01.jpg` for new scans, for example
+`Smith,D-Todd_19031105_01.jpg`. Number every scan, including single-page letters,
 with at least two digits. Keep the same letter stem and increase `_01`, `_02`, etc.
 Use `YYYYMM`, `YYYY`, or `undated` when the date is incomplete; use `-a`, `-b`
 before the page suffix for separate letters with the same sender, recipient and date.
 See the [naming guide](docs/naming.md) for examples and migration safeguards.
 
-The Drive collection was migrated on 2026-10-21: 44 scans, 21 saved readings and 25
-current Drive outputs. Legacy filenames remain supported, including the unchanged
-tracked test scans. Individual TXT reports use the compact date and omit the page suffix.
+The reader supports both date separators. The existing Shufeldt scans and reports use
+the earlier hyphen before the date. Individual TXT reports follow their letter's scan
+stem with the compact date and omit the page suffix.
 
 ## Install on Windows
 

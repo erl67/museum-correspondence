@@ -165,8 +165,17 @@ function doGet(e) {
   page.openFolders = JSON.stringify(arrival.openFolders);
   page.appUrl = ScriptApp.getService().getUrl();
   page.error = '';
-  try { gate_(); } catch (error) { page.error = error.message; }
-  return page.evaluate().setTitle('Museum correspondence')
+  let title = 'Museum correspondence transcriptions';
+  try {
+    if (page.letterId) {
+      const { value } = bundle_();
+      const letter = value.letters.find(item => item.letter_id === page.letterId);
+      if (letter) title = letterPageTitle_(letter);
+    } else {
+      gate_();
+    }
+  } catch (error) { page.error = error.message; }
+  return page.evaluate().setTitle(title)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
@@ -218,6 +227,25 @@ function chronology_(letter) {
   // filename date. Keep its provisional basis separate from document evidence.
   const hint = calendarDate_((letter.hints || {}).date);
   return { sort_date: hint || '', sort_basis: hint ? 'filename hint' : 'unknown' };
+}
+
+function letterPageTitle_(letter) {
+  const metadata = letter.metadata || {};
+  const names = letter.catalogue_names || {};
+  const hints = letter.hints || {};
+  const firstText = (...values) => {
+    const value = values.find(item => typeof item === 'string' && item.trim());
+    return value ? value.replace(/\s+/g, ' ').trim() : '';
+  };
+  const person = name => {
+    const field = metadata[name] || {};
+    return firstText((names[name] || {}).name, field.normalized, field.value, hints[name]) || 'Unknown';
+  };
+  const date = metadata.date || {};
+  const placement = chronology_(letter);
+  const dateLabel = placement.sort_basis === 'filename hint' ? placement.sort_date : firstText(date.normalized, date.value);
+  const correspondents = person('sender') + ' → ' + person('recipient');
+  return 'Transcription — ' + [correspondents, dateLabel].filter(Boolean).join(' ');
 }
 
 function compareLetters_(a, b) {

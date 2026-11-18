@@ -51,8 +51,8 @@ that hash before display. The mapping file is external to transcription identity
 never triggers a transcription request. Supply `--mapping` whenever regenerating the mapped
 viewer bundle. Ordinary exports without that option explicitly show missing mappings.
 
-The current naming convention is `Sender-Recipient-YYYYMMDD_01.jpg`. The viewer uses
-ordered scans and filenames from the export, so it needs no filename parser changes.
+New scans use `Sender-Recipient_YYYYMMDD_01.jpg`. The viewer uses the exact exported
+scan paths and order, including the older paths with a hyphen before the date.
 Search accepts the compact date or full filename through current filename hints, as well
 as normalized dashed dates. Regenerate the export after path reconciliation; preserve
 image IDs and byte hashes, and verify the actual Drive IDs when maintaining the mapping.
@@ -271,21 +271,23 @@ deployment copy can be older than the latest rerun. Code changes alone remove re
 rows; the refreshed JSON supplies the standard names and confirmed catalogue date. Neither
 publication nor deployment is performed by preparing these local files.
 
-**Read letter** opens one complete letter using its stable archival ID, independent of names/dates.
+**Read letter** opens one complete letter using its stable archival ID. The browser tab title
+shows the sender, recipient and date when available.
 An interpretive summary appears above all its source pages. Each page pairs its original scan
 on the left with its own source-language transcription on the right, matched by image ID in
-exported scan order. The transcription has a subtle paper background and left accent. On desktop,
-both panels have equal width and the loaded scan's proportions; long text scrolls inside its
-keyboard-focusable panel, preserving every line, annotation and optional translation. While
-loading or unavailable, scans reserve a portrait-shaped slot. On narrow screens each pair stacks
-scan then transcription, and the text flows to its full height.
+exported scan order. The transcription has a subtle paper background and left accent. The
+transcription and translations use compact sans serif type and keep their original line breaks.
+On desktop, letters with long lines get a slightly wider text column on every page. Each
+text panel grows vertically to fit its full content, including annotations and translations,
+as soon as the letter loads. On narrow screens the scan and text stack. While loading or
+unavailable, scans reserve a portrait-shaped slot.
 
 Sender, recipient, date, place, addresses, affiliations, language and other saved metadata are
 shown below all pages, followed by review states, separate notes and correspondence connections.
 Evidence remains in a collapsed panel. Raw partial responses and technical provenance are
 available only in restricted mode.
 **Previous letter** and **Next letter** at both top and bottom follow the complete folder order,
-including when opened from search. They stop at folder boundaries. **All folders** returns to
+including when opened from search. They stop at folder boundaries. **All letters** returns to
 the catalogue with that letter's folder expanded.
 
 Proposed, confirmed, rejected and unresolved connections have distinct labels. Incoming
@@ -306,7 +308,8 @@ template parameters use escaped printing. No source text is evaluated as HTML.
 
 ## Limits and offline verification
 
-This minimal version rereads the export on each RPC. Maximum export: 10 MiB; image: 12 MiB;
+The viewer rereads the export on each RPC and when setting the browser tab title for a letter.
+Maximum export: 10 MiB; image: 12 MiB;
 sum of planned image bytes per letter: 24 MiB. The folder catalogue and its search return all
 matching rows within that export; full page text/images load only when opening a letter.
 The older `searchLetters` RPC retains its 100-result limit and limitation flag for compatibility.

@@ -24,7 +24,7 @@ class NamingTests(Workspace):
         self.assertEqual(first['hints']['date'], '1904-06-24')
         self.assertEqual(len(first['image_ids']), 2)
         self.assertEqual(self.inventory['letters'][1]['hints']['recipient'], 'Smith,D')
-        self.assertEqual(canonical_stem('Todd-Smith,D_19040123'), 'Todd-Smith,D-19040123')
+        self.assertEqual(canonical_stem('Todd-Smith,D_19040123'), 'Todd-Smith,D_19040123')
         self.assertEqual(filename_hints('Todd-Smith,D_19040230'), {})
         # Different exact stems still require review; this is not an automatic merge.
         jpeg(self.inputs / 'Smith,H-Todd-19040624_01.jpg')
@@ -42,6 +42,7 @@ class NamingTests(Workspace):
         for token in ('18990229', '189913', '18990000', '0000', '1899080'):
             self.assertEqual(filename_hints('A-B-' + token), {})
         self.assertEqual(canonical_stem('A-B-1899-8-7-a'), 'A-B-18990807-a')
+        self.assertEqual(canonical_stem('A-B_1899-8-7-a'), 'A-B_18990807-a')
 
     def test_numeric_order_including_tenth_page(self):
         self.setup_letter(tuple(f'A-B-18990807_{n:02d}.jpg' for n in range(1, 12)))
@@ -92,7 +93,7 @@ class NamingTests(Workspace):
                    quota=Quota(self.config, clock.time, clock.sleep))
         old = self.store.journal.read_bytes()
         results = deepcopy(self.store.results())
-        paths = {i['path']: f'A-B-18990502_{n:02d}.jpg'
+        paths = {i['path']: f'A-B_18990502_{n:02d}.jpg'
                  for n, i in enumerate(self.inventory['images'], 1)}
         for source, target in paths.items():
             (self.inputs / source).rename(self.inputs / target)
@@ -111,7 +112,7 @@ class NamingTests(Workspace):
             output = self.root / 'exports'
             export_all(self.store, refreshed, output)
             publish_text(self.store, refreshed, output)
-        text = (self.inputs / 'A-B-18990502.txt').read_text(encoding='utf-8')
+        text = (self.inputs / 'A-B_18990502.txt').read_text(encoding='utf-8')
         for name in paths.values():
             self.assertIn(name, text)
         for name in paths:

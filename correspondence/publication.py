@@ -88,8 +88,12 @@ def publish_text(store, inventory, output):
     for relative, content in files.items():
         path = source_destination(root, relative)
         # Recheck against edits made after preflight, before each replacement.
-        if path.exists() and digest(path.read_bytes()) not in owned.get(relative, []):
-            raise ValueError(f"File changed during publication: {relative}")
+        if path.exists():
+            previous_hash = digest(path.read_bytes())
+            if previous_hash not in owned.get(relative, []):
+                raise ValueError(f"File changed during publication: {relative}")
+            if previous_hash == digest(content):
+                continue
         atomic_bytes(path, content)
     for relative in sorted(retired):
         path = source_destination(root, relative)

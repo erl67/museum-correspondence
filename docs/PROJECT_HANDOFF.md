@@ -29,6 +29,40 @@ during this resumed work.
 
 ## Responsibilities
 
+### Viewer headings, counts, and letter tab titles — 2026-11-18
+
+The catalogue heading is **Museum correspondence transcriptions**. Catalogue counts use
+regular singular and plural forms and the letter navigation uses **All letters**. Apps Script
+reads the export for direct letter requests to set the browser tab title from the sender,
+recipient, and available date. The transcription text uses 0.875rem type. The local Firefox
+layout check and both offline test suites passed. Deploy Code.gs and Viewer.html together.
+
+### Smith filenames, Daisy Smith review and reader layout — 2026-11-18
+
+New scans use `Sender-Recipient_YYYYMMDD_01.jpg`. Individual reports use the same stem
+without the page number. The authorized Smith migration renamed nine scans in place and
+reconciled their paths to the existing image and letter IDs. Publication refreshed all
+14 named Smith reports and the combined reports and viewer bundle. The 69 source hashes
+and 23 Shufeldt report hashes and modification times matched their prior values. The
+public viewer decoded all nine renamed scans using the same stable letter links.
+
+The November 5, 1903 Daisy Smith review is saved in ignored
+`local/reviews/smith-daisy-19031105-20261118.json`. It records the corrections on
+pages 2–5, credits Daisy Smith as the letter's author, and identifies M. A. Carriker
+as the likely annotator of the three corrections signed MAC. Current name review
+warnings follow the reviewed metadata. The original revision and journal history are
+preserved. Recovery material and the verified rename map are in ignored
+`local/smith-review-20261118/`.
+
+The viewer uses slightly smaller sans serif text in its transcription panels. Transcriptions,
+annotations and translations are visible directly in the reading view. Text panels grow
+past the scan when needed, with one shared desktop column split per letter. A letter with
+long lines gives slightly more width to text on all its pages. The prepared `Code.gs` and
+`Viewer.html` in `local/viewer-deployment/` are ready for the next Apps Script deployment.
+The renamed scans and corrected text
+already load in the public reader through the updated Drive bundle. Offline suites
+passed 132 Python and 58 viewer tests, with zero skips. See [testing.md](testing.md).
+
 ### Viewer folder shortcuts and search links — 2026-11-17
 
 `doGet` reads `e.queryString` to recognize `?Smith` and `?Shufeldt`, including trailing `=`.

@@ -9,6 +9,25 @@ node --test apps_script/viewer/test_viewer.cjs
 git diff --check
 ```
 
+Recorded on **2026-11-18** with **132 Python and 59 viewer tests passed**, zero
+failures or skips. The suites exercise underscore report stems, reconciled scan IDs
+and page order, unchanged publication copies, and a reviewed attributed-author
+field in generated reports.
+
+A local Firefox check used the five corrected pages with blank stand-ins at the saved
+scan dimensions. At 1000 px all text panels were 475 px wide beside 421 px scans.
+At 500 px the scan and text stacked at 468 px wide. The text panels contained their
+full rendered height at both widths, including the pages that extended below the
+scans. The viewer tests cover the shared width rule, full inline translation and
+annotation placement, and the switch back to equal columns for shorter lines.
+With the final 0.875rem font the sample used 137 rendered transcription lines at each
+viewport width, down from 140. The web app title check covers the catalogue, a direct letter
+link, and the generic title for a denied or retired record.
+
+Drive readback verified the generated reports and viewer bundle. The public reader
+loaded all nine renamed Smith scans and showed the corrected November 5 letter,
+including the author attribution and Carriker notes.
+
 Recorded on **2026-11-17**: **131 Python tests passed, 0 failed, 0 skipped;
 56 viewer tests passed, 0 failed, 0 skipped.** Added coverage for targeted folder inventory,
 unchanged earlier grouping-review flags, missing-page detection within the selected folder,

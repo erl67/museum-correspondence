@@ -47,6 +47,24 @@ class ReviewExportTests(Workspace):
         self.assertEqual(record["metadata_review"], "approved")
         self.assertEqual(record["transcription_review"], "unreviewed")
 
+    def test_reviewed_attributed_author_updates_label_and_current_review_reasons(self):
+        original = deepcopy(self.result)
+        author = apply_review(self.store, self.inventory, dict(
+            kind="person", name="Alice Example", aliases=["A."],
+            review_status="approved", source="synthetic staff authority"))
+        iid = self.letter["image_ids"][0]
+        self.review(metadata={"attributed_author": dict(
+            value="A.", normalized="Alice Example", certainty="explicit",
+            evidence=[dict(image_id=iid, quote="A.")], person_id=author["data"]["person_id"])})
+        record = current_records(self.store, self.inventory)[0]
+        self.assertIn("attributed_author: unknown", original["review_reasons"])
+        self.assertNotIn("attributed_author: unknown", record["review_reasons"])
+        self.assertEqual(self.store.results()[-1], original)
+        output = self.root / "exports"
+        export_all(self.store, self.inventory, output)
+        self.assertIn("Attributed Author: Alice Example (explicit)",
+                      (output / "combined.txt").read_text(encoding="utf-8"))
+
     def test_viewer_recency_uses_finished_attempts_including_failures(self):
         output = self.root / "exports"
         original = self.store.journal.read_bytes()

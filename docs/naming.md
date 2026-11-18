@@ -3,21 +3,20 @@
 Use this convention for new scans:
 
 ```text
-Sender-Recipient-YYYYMMDD_01.jpg
-Shufeldt,P-Todd-18990807_01.jpg
-Shufeldt,P-Todd-18990807_02.jpg
+Sender-Recipient_YYYYMMDD_01.jpg
+Smith,D-Todd_19031105_01.jpg
+Smith,D-Todd_19031105_02.jpg
 ```
 
 Keep the existing correspondent folders. Include sender and recipient in the filename
 so a file remains identifiable outside its folder. Use consistent names and initials;
-commas are allowed. Hyphens separate the sender, recipient and date fields, and an
-underscore introduces the final numeric page position. Names containing ambiguous
+commas are allowed. Use a hyphen between sender and recipient, and underscores before
+the date and final numeric page position. Names containing ambiguous
 separators need a reviewed grouping override; retain full names in catalogue metadata.
 
-An underscore before the date is also accepted, for example `Smith,H-Todd_19040624_01.jpg`
-or `Todd-Smith,D_19040123_01.jpg`. Existing scans need no rename. The exact filename stem
-still defines the group: mixing hyphen and underscore variants within one letter does not
-merge its pages automatically. Readable report stems use the standard hyphen before the date.
+The earlier hyphen before the date remains supported and is used by the existing
+Shufeldt scans. Discovery groups pages by their exact filename stem. Use the same
+separator on every page of a letter so they stay together.
 Several correspondents may share a folder; `Smith,D` and `Smith,H` stay distinct hints, while
 the viewer puts their letters together by date and uses registered full names for display.
 
@@ -36,12 +35,12 @@ the viewer puts their letters together by date and uses registered full names fo
 
 | What is known | Example scan |
 | --- | --- |
-| Full date | `Shufeldt,P-Todd-18990807_01.jpg` |
-| Year and month | `Shufeldt,P-Todd-189908_01.jpg` |
-| Year only | `Shufeldt,P-Todd-1899_01.jpg` |
-| No date | `Shufeldt,P-Todd-undated_01.jpg` |
-| First of two separate letters on the same date | `Shufeldt,P-Todd-18990807-a_01.jpg` |
-| Second letter on that date | `Shufeldt,P-Todd-18990807-b_01.jpg` |
+| Full date | `Smith,D-Todd_19031105_01.jpg` |
+| Year and month | `Smith,D-Todd_190311_01.jpg` |
+| Year only | `Smith,D-Todd_1903_01.jpg` |
+| No date | `Smith,D-Todd_undated_01.jpg` |
+| First of two separate letters on the same date | `Smith,D-Todd_19031105-a_01.jpg` |
+| Second letter on that date | `Smith,D-Todd_19031105-b_01.jpg` |
 
 Use lowercase letter suffixes consistently on every page of that letter. They distinguish
 documents, not page positions or confirmed chronology within the day. The same rule works
@@ -55,10 +54,11 @@ date fields continue using dashed dates for comparisons and chronology.
 
 ## Reports and compatibility
 
-One report covers the whole letter, so it omits the page suffix:
-`Shufeldt,P-Todd-18990807.txt`. A separate same-date letter retains `-a` or `-b`.
-Recognized legacy report titles also use compact dates; custom descriptive titles remain
-intact. Colliding report names get stable-ID suffixes so every record is retained.
+One report covers the whole letter. It follows the scan stem without the page suffix,
+for example `Smith,D-Todd_19031105.txt`. A separate same-date letter retains `-a` or `-b`.
+Recognized legacy report titles use compact dates and retain their date separator,
+as in `Shufeldt,P-Todd-18990807.txt`. Custom descriptive titles remain intact.
+Colliding report names get stable-ID suffixes so every record is retained.
 
 Folder reports keep `<folder>_transcriptions.txt`; collection reports keep
 `Correspondence_transcriptions.txt` and `Correspondence_viewer.json`. CSV/JSON, individual
@@ -85,6 +85,13 @@ operation. Publication ownership is journalled before writes/removals for retry 
 
 Renaming does not require another Gemini request. Use `transcribe --pending` for future
 unfinished work; filename changes affect request fingerprints used by `--all`/`--letter`.
+
+## 2026-11-18 Smith Drive update
+
+Nine Smith scans were renamed in place to use the underscore before the date. The
+path map preserves each image and letter ID. All 14 Smith reports now follow their
+scan stems. The public viewer loaded all nine renamed scans using the refreshed export.
+The map, earlier viewer bundle and verification are in ignored `local/smith-review-20261118/`.
 
 ## 2026-10-21 Drive migration
 

@@ -90,7 +90,7 @@ Set-Location "C:\Users\x5769\Documents\GitHub\museum-correspondence"
 Make sure Google Drive for desktop is running and you can open the scans in File Explorer
 under `G:\My Drive\Correspondence`. Let Drive finish downloading them if necessary.
 Name new scans using [the naming guide](naming.md), for example
-`Shufeldt,P-Todd-18990807_01.jpg`. Existing inventoried scans require an explicitly
+`Smith,D-Todd_19031105_01.jpg`. Existing inventoried scans require an explicitly
 authorized, byte-verified migration and path reconciliation before changing their names.
 
 ## 2. Check the installation
