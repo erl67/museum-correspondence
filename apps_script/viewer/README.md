@@ -89,6 +89,12 @@ Add these query strings to the viewer URL or to a website redirect that forwards
 | `?folder=Smith%2C%20Daisy-and-Herbert` | Opens the named folder in the full catalogue. The folder name must match exactly. |
 | `?letter=ltr_…` | Opens the letter with that archival ID. Copy the full ID from a viewer letter link. |
 
+On public letter pages, **Copy letter link** in Letter details gives
+`https://ericlaslo.com/letter/ltr_…`. If the browser blocks automatic copying, the viewer
+selects the URL for manual copying. The website must route `/letter/<id>` through its existing
+correspondence redirect with `?letter=<id>`. Verify that route before deploying the button.
+The viewer's reading and navigation links still use the current Apps Script URL.
+
 The two person shortcuts keep the search box empty and leave every other folder visible and
 collapsed. Other bare terms still run a search. Use `q=` for explicit searches, such as
 `?q=Daisy%20Smith`. An empty `?q=` opens the regular catalogue. A letter link takes precedence

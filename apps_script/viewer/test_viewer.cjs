@@ -859,6 +859,41 @@ test('both navigation bars link to adjacent letters and reopen the source folder
   assert.equal(allNodes(f.ids.record).filter(n => n.attributes['aria-disabled'] === 'true').length, 4);
 });
 
+test('public letters offer a short share link in the details and allow manual copying if blocked', async () => {
+  const bundle = fixture();
+  const id = 'ltr_c96bfb206c5e5c608ec2f1416426d2e8';
+  bundle.letters[0].letter_id = id;
+  const publicReader = context(bundle, { publicMode: true });
+  const url = 'https://ericlaslo.com/letter/' + id;
+  const f = frontend();
+  f.sandbox.renderLetter(publicReader.sandbox.loadLetter(id));
+  const details = f.ids.record.children.find(node => node.className === 'panel');
+  const share = details.children.find(node => node.className === 'letter-share');
+  const [button, status, field] = share.children;
+  assert.equal(button.textContent, 'Copy letter link');
+  assert.equal(field.value, url);
+  assert.equal(field.hidden, true);
+  assert.equal(field.readOnly, true);
+
+  let copied;
+  f.sandbox.navigator = { clipboard: { writeText: async value => { copied = value; } } };
+  await button.events.click();
+  assert.equal(copied, url);
+  assert.equal(status.textContent, 'Link copied.');
+
+  const focused = [];
+  field.focus = () => focused.push('focus');
+  field.select = () => focused.push('select');
+  f.sandbox.navigator.clipboard.writeText = async () => { throw Error('Clipboard blocked'); };
+  await button.events.click();
+  assert.equal(field.hidden, false);
+  assert.deepEqual(focused, ['focus', 'select']);
+  assert.equal(status.textContent, 'Copy the selected link.');
+
+  f.sandbox.renderLetter(context(bundle).sandbox.loadLetter(id));
+  assert.ok(!allNodes(f.ids.record).some(node => node.className === 'letter-share'));
+});
+
 test('scan dimensions size the paired sheets and decode errors preserve text and source link', () => {
   const f = frontend(); f.sandbox.renderLetter(context().sandbox.loadLetter('ltr_one'));
   f.calls[0].success({ status: 'ready', data: 'data:image/jpeg;base64,test', url: 'https://drive.google.com/synthetic' });

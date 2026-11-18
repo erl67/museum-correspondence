@@ -29,6 +29,14 @@ during this resumed work.
 
 ## Responsibilities
 
+### Public letter share links
+
+Public letter pages offer **Copy letter link** in Letter details. Viewer.html builds the
+short URL from the stable ID. If clipboard access fails, the viewer selects the URL for
+manual copying. The website project owns the `/letter/<id>` route and translates it to
+the existing `?letter=<id>` request. Update and verify the website route before deploying
+Viewer.html. The normal viewer navigation keeps its direct Apps Script links.
+
 ### Viewer headings, counts, and letter tab titles — 2026-11-18
 
 The catalogue heading is **Museum correspondence transcriptions**. Catalogue counts use
