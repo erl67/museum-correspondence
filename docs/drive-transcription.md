@@ -55,18 +55,14 @@ letters across the whole store; it is not a folder filter. It skips completed re
 of age. Repeat that command to continue after an ordinary pause; inspect unknown interrupted
 outcomes before using `--retry-interrupted`. Do not use `--all` or `--fresh` for this addition.
 
-Results refresh after each saved letter. Let Drive finish syncing, then reload
-[cmbirds.org/letters](https://cmbirds.org/letters). The Smith folder will move first after a
-recorded transcription attempt, even if the attempt fails. The folder-priority update also requires replacing **Code.gs** and
-**Viewer.html** in Apps Script and updating the existing deployment to a new version.
-Inventory/transcription/export with the updated Python code supplies the required timestamps;
-there is no need to transcribe the older letters again. See the [viewer guide](../apps_script/viewer/README.md#folder-order-and-shared-correspondents).
+Results and working exports refresh after each saved letter. After updating the website mirror,
+check the Smith folder in the public catalogue. Inventory, transcription and export record the
+available timestamps from the saved store. See the [website mirror workflow](outputs.md#how-the-website-receives-new-readings).
 
 If the service returns 503/high demand for every retry, the batch stops and saves the failure.
 The terminal now prints the actual saved error and the batch-stop message. Resume later with
-the same `transcribe --pending` command. After the failed or successful attempt is saved and
-exported, let Drive sync and reload the viewer. An already deployed viewer with the updated
-folder ordering picks up the data automatically.
+the same `transcribe --pending` command. Check the saved status in the working reports before
+refreshing the public mirror.
 
 For an explicit Gemini 3.8 Flash attempt after repeated service failures, use the
 [alternate-model configuration](configuration.md#opt-in-gemini-38-flash). The prepared local
@@ -222,7 +218,7 @@ G:\My Drive\Correspondence
 - `Shufeldt, RW\Shufeldt, RW_transcriptions.txt`: the RW folder's letters together.
 - Each scan folder also has individual letter reports, such as
   `Shufeldt, Percy\Shufeldt,P-Todd-18990418.txt`, with all pages of that letter in order.
-- `Correspondence_viewer.json`: a machine-readable copy for the web viewer, not a staff report.
+- `Correspondence_viewer.json`: a structured copy of the generated local reading bundle.
 
 Names use the compact-date letter stem without its page suffix. Grouping overrides can supply
 an explicit readable `title`; collisions get distinct suffixes so no letter overwrites another.
@@ -253,15 +249,10 @@ To regenerate the reports from saved results without any Gemini requests, run:
 Always include both the store and output options shown above. The program does not remember
 the last `--output` setting.
 
-Open the correspondence web viewer at **[cmbirds.org/letters](https://cmbirds.org/letters)**.
-Use this canonical address for bookmarks and shared access links. The viewer reads the synced
-viewer JSON internally and displays the letter text. Maintainers configure its Drive file IDs,
-collection scan folder (or explicit scan mappings), and deployment;
-saving the TXT files alone does not configure it. See [viewer setup](../apps_script/viewer/README.md).
-After each saved transcription, local outputs and remembered publication refresh. Let Drive
-finish syncing, then reload the viewer. Updating the contents of the same configured Drive
-JSON file needs no redeployment. The prepared JSON under `local/viewer-deployment` is not
-refreshed by these commands; use `local/full-exports/viewer.json` or its synced root copy.
+Read the public collection at **[ericlaslo.com/birds/letters](https://ericlaslo.com/birds/letters)**.
+`G:\My Drive\Correspondence` is where you add scans and run transcriptions. The website serves
+mirrored files from its own hosting. Drive copies refresh as part of the working workflow, and
+the website mirror refreshes separately. See [how to refresh the mirror](outputs.md#how-the-website-receives-new-readings).
 
 ## Corrected scan filenames
 

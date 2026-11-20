@@ -1,8 +1,11 @@
-# Read-only correspondence viewer
+# Legacy Google Apps Script correspondence viewer
 
-Open the viewer at **[cmbirds.org/letters](https://cmbirds.org/letters)**. This is the canonical
-address for readers, bookmarks and shared access links. Apps Script execution (`/exec`) and
-script-editor URLs are maintenance details, not the published viewer address.
+Read the public correspondence at **[ericlaslo.com/birds/letters](https://ericlaslo.com/birds/letters)**.
+Individual public links use `https://ericlaslo.com/letter/<archival-id>`. The website serves
+mirrored files from its own hosting. Drive is the working location for new scans and
+transcription. See the [current publishing workflow](../../docs/outputs.md#how-the-website-receives-new-readings).
+
+The sections below document the former reader for maintenance and historical reference.
 
 Files: `Code.gs`, `Viewer.html`, `appsscript.json`. Node tests and this README are not Apps
 Script source. The viewer requires no Gemini credentials, no Python runtime, and no
@@ -77,9 +80,9 @@ not updated by routine commands. Use the current local or synced file for mainte
 With explicit per-image mappings, supply `--mapping` on a final export; inventory/transcription
 refreshes do not retain those mappings. The configured scan-root lookup needs no mapping file.
 
-## Links to searches, folders, and letters
+## Legacy Apps Script links to searches, folders, and letters
 
-Add these query strings to the viewer URL or to a website redirect that forwards the query:
+Add these query strings to the legacy Apps Script `/exec` URL:
 
 | Query string | Opens |
 | --- | --- |
@@ -89,21 +92,14 @@ Add these query strings to the viewer URL or to a website redirect that forwards
 | `?folder=Smith%2C%20Daisy-and-Herbert` | Opens the named folder in the full catalogue. The folder name must match exactly. |
 | `?letter=ltr_…` | Opens the letter with that archival ID. Copy the full ID from a viewer letter link. |
 
-On public letter pages, **Copy letter link** in Letter details gives
-`https://ericlaslo.com/letter/ltr_…`. If the browser blocks automatic copying, the viewer
-selects the URL for manual copying. The website must route `/letter/<id>` through its existing
-correspondence redirect with `?letter=<id>`. Verify that route before deploying the button.
-The viewer's reading and navigation links still use the current Apps Script URL.
+The legacy viewer's **Copy letter link** button uses the public website's
+`https://ericlaslo.com/letter/ltr_…` format. Its reading and navigation links use the
+legacy Apps Script deployment URL.
 
 The two person shortcuts keep the search box empty and leave every other folder visible and
 collapsed. Other bare terms still run a search. Use `q=` for explicit searches, such as
 `?q=Daisy%20Smith`. An empty `?q=` opens the regular catalogue. A letter link takes precedence
 when combined with a search. On the catalogue, a nonempty search opens all matching folders.
-
-The website's Apache redirect can forward these as-is. A `RewriteRule` whose destination
-is the existing Apps Script `/exec` URL, with no query string and without `QSD`, preserves
-the incoming query by default. Both `Code.gs` and `Viewer.html` need a new deployment version
-to enable these links. The current Drive export already has the searchable fields and folder names.
 
 ## Folder order and shared correspondents
 
@@ -170,10 +166,8 @@ To see the manifest, open **Project Settings → Show appsscript.json manifest f
 Save, then **Deploy → Manage deployments → Edit (pencil) → Version: New version**.
 Choose **Execute as: Me**, **Who has access: Anyone**, then **Deploy** and authorize the
 read-only Drive scope as the deploying account. If that deployment cannot change execution
-identity, create a new web-app deployment with those settings. If its `/exec` URL changes,
-update the destination for the canonical address, [cmbirds.org/letters](https://cmbirds.org/letters).
-Test that canonical address in a signed-out/private browser window, including a letter and
-all its scans. The deployment's `/exec` URL can also be used for maintenance diagnostics.
+identity, create a new web-app deployment with those settings. Test that legacy deployment's
+`/exec` URL in a signed-out/private browser window, including a letter and all its scans.
 This public-mode update does not require regenerating the JSON.
 
 To end public access, archive every public deployment in **Manage deployments**. Saving source

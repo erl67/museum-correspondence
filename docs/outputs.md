@@ -21,13 +21,13 @@ The program does not remember the last `--output` directory.
 | `viewer.json` | Reading bundle: text, summaries, metadata, ordered scans, availability, connections and provenance |
 
 Local per-letter reports and structured exports also retain retired records. Combined text
-and Drive per-letter publication use active letters; the public viewer exposes active letters.
+and Drive per-letter publication use active letters. Use the website project's publication
+workflow to prepare the files for public reading.
 A status report is generated even when a complete reading is unavailable.
 
 The viewer bundle includes `processed_at` from the latest recorded attempt end for each letter,
-including failed and incomplete readings. The viewer uses it to put the folder with the latest
-activity first. `transcribed_at` still records the saved time of a current complete reading
-and supports older viewer deployments. Refresh existing data with `export` to pick up the new
+including failed and incomplete readings. `transcribed_at` records the saved time of a current
+complete reading. Refresh existing data with `export` to pick up the new
 field from the saved journal without making a transcription request.
 
 Current generated files are rebuilt, not edited in place as authoritative records. Make
@@ -83,32 +83,21 @@ it does not run a new search for candidates. After changed readings or reference
 
 ## How the website receives new readings
 
-The normal path is: saved result → local `viewer.json` → published
-`Correspondence_viewer.json` → Drive for desktop synchronization → the configured viewer.
+The public catalogue is [ericlaslo.com/birds/letters](https://ericlaslo.com/birds/letters).
+Direct letter links use `https://ericlaslo.com/letter/<archival-id>`.
 
-Apps Script's `EXPORT_FILE_ID` identifies the Drive JSON file to read. The filename alone
-does not select it. Once Drive has synced the updated contents of that same file, subsequent
-viewer requests read the new bundle. Reload [cmbirds.org/letters](https://cmbirds.org/letters)
-to refresh an already open catalogue or letter. The page does not continuously refresh itself.
-If data changes between a letter request and an image request, the viewer asks for a reload
-so text and scans come from a consistent export.
+1. Add and transcribe scans in `G:\My Drive\Correspondence`. The collection store retains the
+   results and the program refreshes `local/full-exports` and the enabled working copies on Drive.
+2. Refresh the public mirror through the website project using the current scans and reading
+   outputs. The current local reading bundle is `local/full-exports/viewer.json`, with a
+   working copy at `G:\My Drive\Correspondence\Correspondence_viewer.json`. Prepared files in
+   `local/viewer-deployment` and archived exports are snapshots.
+3. After the website mirror is updated, open the public catalogue and the updated letter.
+   Verify that the expected text and scan pages are present.
 
-A new reading, summary, name, date or relationship in the same JSON file does not require
-redeployment. Changed viewer source/settings do require a new deployment version. Verify
-that Drive retained the configured file ID after synchronization. If the JSON is replaced by
-a different Drive file, update `EXPORT_FILE_ID` and redeploy; in restricted mode also check
-`ACCESS_FILE_ID` if it uses that same file. See the [viewer setup guide](../apps_script/viewer/README.md).
-
-The automatic process does **not** refresh `local/viewer-deployment/Correspondence_viewer.json`,
-archived exports or other manually prepared copies. The current local source is
-`local/full-exports/viewer.json`; its published copy is at the scan root. Use those current
-files when maintaining the viewer.
-
-The configured scan-root lookup resolves images by exported relative paths, without requiring
-stored per-image Drive mappings. For installations using explicit mappings instead, pass
-`--mapping "local/drive-map.json"` to the final `export`. Mappings are not remembered;
-inventory/transcription refreshes produce bundles without them. Perform a final mapped
-export before relying on a mapping-only viewer. Publication copies that mapped bundle too.
+The Python commands refresh local and Drive files. Updating the website mirror is a separate
+step owned by the website project. Google Drive remains the working collection. The public
+reader serves the mirrored files from the website, without Apps Script or Drive file IDs.
 
 ## Publication errors and recovery
 
@@ -121,5 +110,5 @@ Copies that already match the regenerated content keep their existing Drive file
 Results are durable before export begins. Local exports are written before publication, so
 Drive being unavailable or an output collision does not lose the saved reading. Restore the
 destination and run the `export` command again. Do not rerun transcription merely to recreate
-a text file or viewer bundle. The program writes through the local Drive mount; Drive for
-desktop handles remote synchronization, which must finish before the website can use it.
+a text file or viewer bundle. Drive for desktop handles synchronization of working copies.
+Refresh the public mirror separately after recovering the current outputs.

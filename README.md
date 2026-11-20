@@ -10,8 +10,9 @@ can rename files with byte verification and identity reconciliation. Filename na
 are provisional hints. The document reading, normalized search values, and staff corrections
 remain separate.
 
-The first version provides a Python command line and a small read-only Google Apps Script
-viewer. No source spreadsheet is needed. The current `test/inputs` contains 25 tracked JPEGs
+The Python command line processes the working collection on Google Drive. The public website
+serves mirrored copies of the scans and transcription outputs. The former Google Apps Script
+viewer is retained as a reference. The current `test/inputs` contains 25 tracked JPEGs
 in two correspondent folders, forming eight provisional letters with 2, 4, 2, 4, 2, 7, 3,
 and 1 ordered pages. The original six scans remain byte-identical after their external move
 into `Shufeldt, Percy` and relabelling from A–D to numeric page suffixes. These are source
@@ -200,8 +201,8 @@ for that store:
 
 This writes `<letter filename>.txt` in each scan folder, a `<folder>_transcriptions.txt`
 combined file in each correspondent folder, and `Correspondence_transcriptions.txt` at the
-collection root. It also writes `Correspondence_viewer.json` for the existing web viewer;
-staff read the text files. Later `inventory`, `transcribe` and `export` commands for that
+collection root. It also writes `Correspondence_viewer.json`, a structured copy of the local
+viewer export, alongside the staff text files. Later `inventory`, `transcribe` and `export` commands for that
 store refresh these copies automatically. Drive for desktop syncs these generated files.
 Unowned files, edited reports and scans are never overwritten. Only exact managed output
 paths are excluded from later scan discovery. See the [Drive guide](docs/drive-transcription.md).
@@ -209,7 +210,7 @@ Superseded managed Drive reports are archived in the local store before removal;
 reports block replacement or removal. Earlier paths remain in historical provenance.
 `review`, `match` and `reconcile-paths` save changes but require a subsequent `export` to
 refresh these files. The [output guide](docs/outputs.md) lists every trigger and destination,
-including viewer synchronization and prepared copies that are not refreshed automatically.
+including how the working outputs feed the website mirror.
 
 ```powershell
 .\.venv\Scripts\python.exe -m correspondence show --letter "LETTER_ID_FROM_INVENTORY"
@@ -237,21 +238,16 @@ unresolved. Shared subject matter alone does not establish a reply.
 
 ## Viewer and verification
 
-Open the viewer at **[cmbirds.org/letters](https://cmbirds.org/letters)**. Use this canonical
-address in bookmarks and shared links. Apps Script deployment and script-editor URLs are
-for maintenance; see the [viewer setup guide](apps_script/viewer/README.md).
+Read the public catalogue at **[ericlaslo.com/birds/letters](https://ericlaslo.com/birds/letters)**.
+Share individual letters as `https://ericlaslo.com/letter/<archival-id>` using the full `ltr_…` ID.
+For example, open the [November 5, 1903 letter](https://ericlaslo.com/letter/ltr_c96bfb206c5e5c608ec2f1416426d2e8).
 
-Use `?Smith` or `?Shufeldt` to open the corresponding folders in the full catalogue.
-Use `?q=Smith` for a filtered search. See the
-[viewer link guide](apps_script/viewer/README.md#links-to-searches-folders-and-letters).
+`G:\My Drive\Correspondence` remains the main working directory for new scans, transcription,
+and generated working copies. The public website reads files mirrored to its own hosting.
+Google Drive and the Google Apps Script viewer are no longer used to serve the public collection.
+After updating the working collection, refresh the mirror through the website project. See the
+[output and mirror workflow](docs/outputs.md#how-the-website-receives-new-readings).
 
-The [Apps Script viewer](apps_script/viewer/README.md) starts with expandable letter folders,
-ordered by the latest recorded transcription attempt in each folder, including failed and incomplete readings. The newest opens automatically,
-with a small divider before the others. Each lists dates, senders and recipients in chronological order, with an inset summary
-snippet beneath each letter's details when available. Search filters the folders
-by saved text and metadata. Retired groupings are excluded from browsing and navigation but
-remain accessible by ID for history only in restricted mode. Lists, letter headings and details prefer staff catalogue
-names, then saved normalized names and dates; original readings remain in the evidence panel.
 Register reusable display aliases and confirm abbreviated catalogue dates through the
 [local review workflow](docs/review.md#standard-catalogue-names). These are separate from
 transcription, attribution certainty and relationship matching. Normal inventory, transcription
@@ -259,31 +255,17 @@ and export commands reapply the saved names automatically, including to new lett
 responses. Keep using the same collection store; no repair script is needed for reruns.
 Known aliases no longer produce filename/name conflict warnings; ambiguous or different people
 still do. Date confirmations survive ordinary reruns but require review after a new transcription
-revision or changed evidence. A valid filename date always provides labelled fallback catalogue
-placement when the document date cannot be used, including after such a rerun. Open a letter for its summary,
-then each original scan on the left and its matching transcription on the right.
-Letter details and connections follow the pages;
-previous/next letter and folder navigation appear at both top and bottom. It makes no
-transcription-service calls. Configure the collection's Drive folder to find scans by their
-exported paths, or supply explicit image mappings. The supplied viewer now defaults to public
-reading, deployed as **Me / Anyone** with read-only Drive access. It publishes current letters
-and verified scans while withholding retired records and internal provenance. The underlying
-Drive files can remain private; their letter content is deliberately public through the app.
-See the viewer README for setup, request limits and how to end public access. Restricted
-reader execution remains available with an institutional access-gate file.
-Every displayed scan is checked against its exported size and SHA-256. Nothing is uploaded,
-deployed, made public, or shared by the Python
-application through the Drive API. Explicit `--publish-text` writes generated files into the
-local Drive folder for Drive for desktop to sync; it does not change sharing or deploy a viewer.
+revision or changed evidence. A valid filename date provides a catalogue fallback when the
+document date cannot be used. The former reader's setup and tests are documented in the
+[legacy Apps Script guide](apps_script/viewer/README.md).
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s test -t . -v
 node --test apps_script/viewer/test_viewer.cjs
 ```
 
-These are software tests using synthetic readings and the current source-image inventory.
-They do not measure historical reading accuracy. Authenticated Drive access and actual Gemini
-account/model availability still need checking in their respective authorized workflows.
+These are offline checks for the transcription tools and legacy Apps Script reader. Check the
+website mirror through the website project after publication.
 
 More detail: [configuration](docs/configuration.md), [transcription conventions](docs/transcription.md),
 [schema and identifiers](docs/schema.md), [review](docs/review.md),

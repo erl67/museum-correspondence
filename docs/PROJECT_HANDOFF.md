@@ -29,7 +29,18 @@ during this resumed work.
 
 ## Responsibilities
 
-### Public letter share links
+### Public website mirror — 2026-11-20
+
+The canonical public catalogue is [ericlaslo.com/birds/letters](https://ericlaslo.com/birds/letters).
+Share individual letters using `https://ericlaslo.com/letter/<archival-id>`. The website hosts
+mirrored files. Google Drive and the Apps Script viewer have been superseded for public reading.
+`G:\My Drive\Correspondence` remains the main working collection for adding scans, running
+transcriptions and keeping generated working copies. The website project owns the public mirror
+and its refresh. See [outputs and automatic updates](outputs.md#how-the-website-receives-new-readings).
+
+The older viewer deployment notes below record the previous arrangement.
+
+### Legacy viewer share links
 
 Public letter pages offer **Copy letter link** in Letter details. Viewer.html builds the
 short URL from the stable ID. If clipboard access fails, the viewer selects the URL for
@@ -317,14 +328,10 @@ inspection of the real store found all four enabled names, 49 standard name fiel
 letters and two retired records. Only the unresolved C. M. Sutton name conflict remains.
 No live transcription, Drive write, deployment, commit or push was performed.
 
-### Canonical viewer address — 2026-10-25
+### Former catalogue address — 2026-10-25
 
-The canonical reader address is **[cmbirds.org/letters](https://cmbirds.org/letters)**.
-The main README, Drive guide and viewer setup guide use it for access, bookmarks and sharing.
-Apps Script execution (`/exec`) and script-editor URLs are maintenance details. When replacing
-a deployment, maintainers must keep the canonical address pointing to the intended deployment
-and verify reading through that address. This documentation-only change does not alter or
-verify live routing, deployment or access settings.
+The reader address was `cmbirds.org/letters`. At the time it pointed to the Apps Script reader.
+The public website mirror superseded that arrangement on 2026-11-20.
 
 ### Intentional public viewer — 2026-10-23
 

@@ -87,7 +87,7 @@ Keep the entire store, including `journal.jsonl` and `blobs`, backed up. Startin
 is not a rerun: it loses access to saved revisions, overrides, names and publication ownership.
 See [schema and identity rules](schema.md) for changes to filenames, pages and grouping.
 
-## Automatic reports and viewer updates
+## Automatic working reports and reading exports
 
 The result is saved before exports run. After each processed result, and again at normal
 batch completion, the command rebuilds reports, CSVs, `records.json` and `viewer.json` in
@@ -96,10 +96,9 @@ it also refreshes individual/folder/collection TXT files and `Correspondence_vie
 beside the scans. Add `--publish-text` to a transcription or export command to enable it
 for a store that has not used it before.
 
-Drive for desktop syncs those files. The viewer reads the configured JSON file on subsequent
-requests; reload the page after synchronization. A data-only update using the same Drive
-file ID needs no script deployment. [Outputs and automatic updates](outputs.md) details all
-destinations, synchronization checks and the separate prepared deployment copy.
+Drive for desktop syncs the working copies. Refresh the public mirror separately before
+checking the updated letter at [ericlaslo.com/birds/letters](https://ericlaslo.com/birds/letters).
+See [outputs and automatic updates](outputs.md) for working destinations and the mirror workflow.
 
 ## Resume or repair outputs
 

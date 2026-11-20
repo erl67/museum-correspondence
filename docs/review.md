@@ -174,8 +174,8 @@ After `review` succeeds, refresh the reports and published reader data:
 is omitted. Source scans and original service responses remain intact.
 
 Open the refreshed report under `local/full-exports/readable/` and check the corrected page.
-After Drive synchronization, reload the viewer to check it there. A data update to the same
-Drive JSON file does not require redeploying the viewer. See [output updates](outputs.md).
+Refresh the website mirror, then check the corrected page on the public site. See the
+[output and mirror workflow](outputs.md#how-the-website-receives-new-readings).
 
 If review fails, fix the reported issue before exporting. In particular, a stale
 `base_revision` means you must inspect the current reading again; changing the ID alone can

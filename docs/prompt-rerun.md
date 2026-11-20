@@ -54,8 +54,8 @@ Set-Location "C:\Users\x5769\Documents\GitHub\museum-correspondence"
 This command sends images and reading context to Gemini and may incur charges. The changed
 prompt/context makes old results ineligible for reuse, so `--fresh` is unnecessary for this
 first rerun. Results are checkpointed and reports refreshed after each letter. Publication
-was already enabled in this store: it also updates Drive reader files and the viewer JSON
-as the batch proceeds, so readers can temporarily see a mixture of old and new revisions.
+was already enabled in this store, so the working reports and reading bundle on Drive also
+refresh as the batch proceeds. Update the website mirror when the new readings are ready to share.
 
 Do **not** use `--pending` to apply this update: it skips old complete readings regardless
 of their prompt. If the batch stops, repeat the same `--all` command within 48 hours; matching
@@ -76,7 +76,7 @@ them. The rerun recreates the original managed TXT paths and leaves the manual a
 It preserves unowned or staff-edited output files by refusing to overwrite them; resolve any
 such error before continuing publication.
 
-## Refresh the viewer data
+## Refresh the reading outputs
 
 After the batch, review the revised reports against the images, particularly the flagged
 Sutton and Percy passages. Do not assess improvement solely by counting uncertainty marks.
@@ -86,25 +86,11 @@ To regenerate all exports from the saved results without service requests:
 .\.venv\Scripts\python.exe -m correspondence --store "local/full-collection" export --output "local/full-exports" --publish-text
 ```
 
-The current local source is `local/full-exports/viewer.json`. Its automatically published copy is
-`G:\My Drive\Correspondence\Correspondence_viewer.json`. Do not upload the older JSON
-in `local/viewer-deployment` or an archive; the normal export command does not refresh those.
-Publication already runs after each saved result and at normal batch completion. This final
+The current local reading bundle is `local/full-exports/viewer.json`. The working copy is
+`G:\My Drive\Correspondence\Correspondence_viewer.json`. Prepared and archived copies are
+snapshots. Working copies already refresh after each saved result and at normal batch completion. This final
 export is useful for recovery or after additional local changes; it is not required after
 every successful transcription. [Output updates](outputs.md) lists all refresh triggers.
 
-The Drive **file ID** used by Apps Script's `EXPORT_FILE_ID` is separate from archival letter
-IDs. Keep using the same Drive JSON file. Let Drive desktop finish syncing and compare its
-file ID with the configured value. No manual upload is needed when that synced file is the
-one configured in the viewer. If uploading manually, select that existing JSON in Drive,
-then **More → Manage versions → Upload new version**, choosing the fresh `viewer.json`.
-Google documents this workflow in [Drive file versions](https://support.google.com/drive/answer/2409045).
-Creating a separate file with the same filename does not select it in Apps Script.
-
-No Apps Script code update/redeployment is needed for this prompt change or a new version of
-the same JSON file. Reload [cmbirds.org/letters](https://cmbirds.org/letters) after sync/upload.
-If the Drive file ID actually changes, update `EXPORT_FILE_ID` and redeploy the existing app;
-also update `ACCESS_FILE_ID` if that file is used as the gate in restricted mode. Public mode
-does not use that gate. Keep `SCAN_ROOT_FOLDER_ID` unchanged for the same scan folder.
-Local export writes cannot guarantee Drive desktop's remote file identity, so check it rather
-than assuming a filename proves it.
+Refresh the website mirror using the [public reading workflow](outputs.md#how-the-website-receives-new-readings),
+then check the revised letter on [ericlaslo.com/birds/letters](https://ericlaslo.com/birds/letters).
