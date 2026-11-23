@@ -1,6 +1,7 @@
 # Legacy Google Apps Script correspondence viewer
 
-Read the public correspondence at **[ericlaslo.com/birds/letters](https://ericlaslo.com/birds/letters)**.
+The legacy viewer displays a deprecation notice that links to the
+**[new letter reader](https://ericlaslo.com/birds/letter-reader/)**.
 Individual public links use `https://ericlaslo.com/letter/<archival-id>`. The website serves
 mirrored files from its own hosting. Drive is the working location for new scans and
 transcription. See the [current publishing workflow](../../docs/outputs.md#how-the-website-receives-new-readings).
